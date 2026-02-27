@@ -1,0 +1,52 @@
+# Vendor & PO Manager — Full Website Overview
+
+## 🔐 Login Page
+Glassmorphism login with gradient background, demo credentials shown at bottom.
+
+![Login Page](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/.system_generated/click_feedback/click_feedback_1771923935201.png)
+
+---
+
+## 📊 Dashboard — Light Mode
+6 animated stat cards + Monthly Purchase Trend chart + Top Vendor (NovaChem Industries, score 92).
+
+![Dashboard Light](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/.system_generated/click_feedback/click_feedback_1771923951469.png)
+
+## 📊 Dashboard — Dark Mode
+Full dark theme with deep navy background, glowing cards, and adjusted chart colors.
+
+![Dashboard Dark](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/dashboard_dark_mode_1771924019878.png)
+
+---
+
+## 🏢 Vendors Page
+5 seeded vendors with rating stars, performance score badges (green/yellow/red), search, and pagination.
+
+![Vendors](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/.system_generated/click_feedback/click_feedback_1771923960802.png)
+
+---
+
+## 📦 Purchase Orders Page
+15 POs with status badges (Pending/Delivered/Cancelled), late delivery warnings, recurring order tags, item counts, and totals.
+
+![Purchase Orders](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/.system_generated/click_feedback/click_feedback_1771923970032.png)
+
+---
+
+## 💰 Invoices — Light Mode
+10 invoices with paid/outstanding amounts, overdue badges, and payment status tracking.
+
+![Invoices Light](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/invoices_light_mode_1771924011110.png)
+
+## 💰 Invoices — Dark Mode
+Same data with dark theme applied — deep contrast, emerald/red color coding preserved.
+
+![Invoices Dark](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/invoices_dark_mode_1771924015496.png)
+
+---
+
+## 🎬 Video Walkthrough
+
+![Full login and navigation flow](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/login_and_dashboard_1771923912953.webp)
+
+![Invoices and dark mode toggle](file:///C:/Users/Lenovo/.gemini/antigravity/brain/1ca2a7e8-7248-47f3-988b-3f1e4cdbcbd9/invoices_and_darkmode_1771924001431.webp)
