@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv');
 const http = require('http');
+const mongoose = require('mongoose');
 const { Server: SocketServer } = require('socket.io');
 const cron = require('node-cron');
 const swaggerUi = require('swagger-ui-express');
@@ -24,6 +25,14 @@ if (fs.existsSync(rootEnv)) {
 
 // Connect to MongoDB
 connectDB();
+
+const appVersion = require('./package.json').version;
+const dbStateLabels = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+};
 
 const app = express();
 const server = http.createServer(app);
@@ -84,7 +93,20 @@ app.use('/api/search', require('./routes/searchRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '5.0.0' });
+    const dbState = process.env.SKIP_DB === 'true'
+        ? 'skipped'
+        : (dbStateLabels[mongoose.connection.readyState] || 'unknown');
+    const isHealthy = dbState === 'connected' || dbState === 'skipped';
+
+    res.status(isHealthy ? 200 : 503).json({
+        status: isHealthy ? 'OK' : 'DEGRADED',
+        app: 'Vendor & PO Manager API',
+        version: appVersion,
+        environment: process.env.NODE_ENV || 'development',
+        database: dbState,
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+    });
 });
 
 // ── Serve React build in production ──

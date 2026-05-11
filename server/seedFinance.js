@@ -21,8 +21,14 @@ const User = require('./models/User');
 
 dotenv.config();
 
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
 const connectDB = async () => {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    if (!mongoUri) {
+        throw new Error('Set MONGODB_URI or MONGO_URI before running the seed script.');
+    }
+
+    const conn = await mongoose.connect(mongoUri);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 };
 

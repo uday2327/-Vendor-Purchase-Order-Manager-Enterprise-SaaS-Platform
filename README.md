@@ -10,7 +10,7 @@ A full-stack MERN application for managing vendors, purchase orders, invoices, c
 | **Backend** | Node.js, Express.js, Socket.io, Nodemailer, ExcelJS |
 | **Database** | MongoDB (Mongoose ODM) |
 | **Auth** | JWT, bcrypt, speakeasy (2FA) |
-| **DevOps** | Docker, GitHub Actions CI/CD, Swagger API Docs |
+| **DevOps** | Docker, Docker Compose, GitHub Actions CI, Render/Vercel config, Swagger API Docs |
 
 ## 🚀 Quick Start
 
@@ -36,7 +36,7 @@ npm install
 
 ### 2. Configure Environment
 
-Edit `server/.env`:
+Create either a root `.env` file or `server/.env`:
 ```env
 MONGODB_URI=mongodb://localhost:27017/vendor_po_manager
 JWT_SECRET=your-secret-key
@@ -50,6 +50,9 @@ SMTP_PASS=your-app-password
 SMTP_FROM="Vendor Manager" <noreply@example.com>
 FRONTEND_URL=http://localhost:5173
 ```
+
+The backend accepts either `MONGODB_URI` or the older `MONGO_URI` name.
+For frontend variables, copy `client/.env.example` to `client/.env`.
 
 ### 3. Seed & Run
 
@@ -73,9 +76,14 @@ npm run dev             # → http://localhost:5173
 ## 🐳 Docker
 
 ```bash
-docker-compose up --build
+docker compose up --build
 # Server → http://localhost:5000
 # Client → http://localhost:3000
+```
+
+Health endpoint:
+```bash
+http://localhost:5000/api/health
 ```
 
 ## 📊 Features (45 Total)
@@ -205,8 +213,16 @@ vendor-system/
 
 ### Docker
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
+
+## CI Pipeline
+
+GitHub Actions runs `.github/workflows/ci.yml` on pushes and pull requests.
+
+- Server job: installs dependencies, checks backend syntax, then starts the API and calls `/api/health`
+- Client job: installs dependencies and builds the Vite frontend
+- Docker job: validates `docker-compose.yml` and builds both Docker images
 
 ## 📄 License
 

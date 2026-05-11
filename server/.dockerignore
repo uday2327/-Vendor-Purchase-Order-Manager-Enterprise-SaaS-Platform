@@ -1,5 +1,9 @@
 node_modules
-npm-debug.log
 .env
+.env.*
 uploads
 .git
+coverage
+*.log
+npm-debug.log*
+.DS_Store
