@@ -10,7 +10,7 @@ A full-stack MERN application for managing vendors, purchase orders, invoices, c
 | **Backend** | Node.js, Express.js, Socket.io, Nodemailer, ExcelJS |
 | **Database** | MongoDB (Mongoose ODM) |
 | **Auth** | JWT, bcrypt, speakeasy (2FA) |
-| **DevOps** | Docker, Docker Compose, GitHub Actions CI, Render/Vercel config, Swagger API Docs |
+| **DevOps** | Docker, Docker Compose, GitHub Actions CI/CD, Render/Vercel config, Swagger API Docs |
 
 ## 🚀 Quick Start
 
@@ -223,6 +223,30 @@ GitHub Actions runs `.github/workflows/ci.yml` on pushes and pull requests.
 - Server job: installs dependencies, checks backend syntax, then starts the API and calls `/api/health`
 - Client job: installs dependencies and builds the Vite frontend
 - Docker job: validates `docker-compose.yml` and builds both Docker images
+
+## CD Pipeline
+
+GitHub Actions also includes `.github/workflows/cd.yml` for Continuous Deployment.
+
+- CD starts after the `CI Pipeline` succeeds for the `main` branch
+- The workflow can also be started manually from GitHub Actions with `workflow_dispatch`
+- Backend deployment is triggered through `RENDER_DEPLOY_HOOK_URL`
+- Frontend deployment is triggered through `VERCEL_DEPLOY_HOOK_URL`
+
+Required GitHub repository secrets for CD:
+
+- `RENDER_DEPLOY_HOOK_URL`
+- `VERCEL_DEPLOY_HOOK_URL`
+
+Simple flow:
+
+1. Push code to `main`
+2. CI checks backend, frontend, and Docker setup
+3. CD triggers deploy hooks
+4. Render deploys backend
+5. Vercel deploys frontend
+
+If Render/Vercel auto-deploy directly from GitHub is already enabled, this workflow still helps demonstrate a formal CD pipeline in the repository for learning and assignment review.
 
 ## 📄 License
 
