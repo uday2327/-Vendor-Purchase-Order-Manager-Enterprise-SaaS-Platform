@@ -11,6 +11,8 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
+      - key: ALLOW_PUBLIC_REGISTRATION
+        value: "false"
       - key: FRONTEND_URL
         sync: false
       - key: SMTP_HOST
@@ -21,12 +23,3 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
-
-  - type: static
-    name: vendor-po-client
-    buildCommand: cd client && npm ci && npm run build
-    staticPublishPath: client/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

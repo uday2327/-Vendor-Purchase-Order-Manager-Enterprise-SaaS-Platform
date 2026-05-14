@@ -9,6 +9,11 @@ services:
       - mongo-data:/data/db
     environment:
       MONGO_INITDB_DATABASE: vendor_po_manager
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   server:
     build:
@@ -30,9 +35,15 @@ services:
       # - SMTP_USER=your@email.com
       # - SMTP_PASS=your-app-password
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     volumes:
       - server-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   client:
     build:
@@ -43,7 +54,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
 volumes:
   mongo-data:

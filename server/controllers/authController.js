@@ -5,6 +5,11 @@ const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
+const allowPublicRegistration = () => {
+    if (process.env.ALLOW_PUBLIC_REGISTRATION === 'true') return true;
+    return process.env.NODE_ENV !== 'production';
+};
+
 // @desc    Login user
 // @route   POST /api/auth/login
 const login = async (req, res) => {
@@ -37,6 +42,10 @@ const login = async (req, res) => {
 // @route   POST /api/auth/register
 const register = async (req, res) => {
     try {
+        if (!allowPublicRegistration()) {
+            return res.status(403).json({ message: 'Public registration is disabled in production' });
+        }
+
         const { name, email, password } = req.body;
 
         const exists = await User.findOne({ email });

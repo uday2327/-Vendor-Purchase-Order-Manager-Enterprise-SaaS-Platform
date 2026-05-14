@@ -10,9 +10,18 @@ jobs:
   server:
     name: Server Checks
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: server
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/vendor_po_manager_ci
+      JWT_SECRET: ci-secret
+      FRONTEND_URL: http://localhost:3000
 
     steps:
       - uses: actions/checkout@v4
@@ -30,19 +39,25 @@ jobs:
       - name: Check server syntax
         run: node --check server.js
 
-      - name: Smoke test health endpoint
+      - name: Seed database
+        run: node seed.js
+
+      - name: Smoke test health and authenticated API
         run: |
-          PORT=5050 SKIP_DB=true JWT_SECRET=ci-secret FRONTEND_URL=http://localhost:3000 node server.js > server.log 2>&1 &
+          PORT=5050 node server.js > server.log 2>&1 &
           SERVER_PID=$!
           trap "kill $SERVER_PID" EXIT
           for i in {1..20}; do
             if curl -fsS http://127.0.0.1:5050/api/health; then
-              exit 0
+              break
             fi
             sleep 1
           done
-          cat server.log
-          exit 1
+          LOGIN_RESPONSE=$(curl -fsS -X POST http://127.0.0.1:5050/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@vendor.com","password":"admin123"}')
+          TOKEN=$(node -e "const data = JSON.parse(process.argv[1]); if (!data.token) process.exit(1); process.stdout.write(data.token);" "$LOGIN_RESPONSE")
+          curl -fsS http://127.0.0.1:5050/api/dashboard -H "Authorization: Bearer $TOKEN"
 
   client:
     name: Client Build
@@ -57,7 +72,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 

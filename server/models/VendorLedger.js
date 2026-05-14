@@ -20,6 +20,4 @@ const vendorLedgerSchema = new mongoose.Schema({
     }],
 }, { timestamps: true });
 
-vendorLedgerSchema.index({ vendor: 1 });
-
 module.exports = mongoose.model('VendorLedger', vendorLedgerSchema);

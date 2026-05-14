@@ -33,13 +33,35 @@ const dbStateLabels = {
     2: 'connecting',
     3: 'disconnecting',
 };
+const defaultAllowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+];
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+};
 
 const app = express();
 const server = http.createServer(app);
 
 // Socket.io
 const io = new SocketServer(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
+    cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
 io.on('connection', (socket) => {
@@ -48,9 +70,10 @@ io.on('connection', (socket) => {
 });
 
 app.set('io', io);
+app.set('trust proxy', 1);
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

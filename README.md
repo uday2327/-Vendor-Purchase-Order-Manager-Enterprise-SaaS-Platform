@@ -15,7 +15,7 @@ A full-stack MERN application for managing vendors, purchase orders, invoices, c
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20.19+ recommended
 - MongoDB (local or Atlas connection string)
 
 ### 1. Clone & Install
@@ -49,6 +49,7 @@ SMTP_USER=your@email.com
 SMTP_PASS=your-app-password
 SMTP_FROM="Vendor Manager" <noreply@example.com>
 FRONTEND_URL=http://localhost:5173
+ALLOW_PUBLIC_REGISTRATION=true
 ```
 
 The backend accepts either `MONGODB_URI` or the older `MONGO_URI` name.
@@ -70,9 +71,13 @@ npm run dev             # → http://localhost:5173
 
 ### 4. Login
 
+Local/demo seed account:
+
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@vendor.com | admin123 |
+
+Change seeded credentials before exposing a public deployment.
 
 ## 🐳 Docker
 
@@ -215,6 +220,7 @@ vendor-system/
 Recommended production variables:
 
 - Render backend: `MONGODB_URI`, `JWT_SECRET`, `FRONTEND_URL`, optional `SMTP_*`, optional `GOOGLE_CLIENT_ID`, optional `GOOGLE_CLIENT_SECRET`
+- Keep `ALLOW_PUBLIC_REGISTRATION` unset on public production deployments unless you intentionally want open signup
 - Vercel frontend: `VITE_API_URL=https://<your-render-service>.onrender.com/api`, optional `VITE_GOOGLE_CLIENT_ID`
 
 ### Docker
@@ -222,11 +228,14 @@ Recommended production variables:
 docker compose up -d --build
 ```
 
+The Docker client container proxies `/api`, `/socket.io`, and `/uploads` to the server container so the frontend can keep using the default `/api` base URL locally.
+
 ## CI Pipeline
 
 GitHub Actions runs `.github/workflows/ci.yml` on pushes and pull requests.
 
 - Server job: installs dependencies, checks backend syntax, then starts the API and calls `/api/health`
+- Server job also seeds an ephemeral MongoDB instance, verifies login, and checks an authenticated dashboard request
 - Client job: installs dependencies and builds the Vite frontend
 - Docker job: validates `docker-compose.yml` and builds both Docker images
 
