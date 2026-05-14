@@ -53,6 +53,7 @@ FRONTEND_URL=http://localhost:5173
 
 The backend accepts either `MONGODB_URI` or the older `MONGO_URI` name.
 For frontend variables, copy `client/.env.example` to `client/.env`.
+Use `VITE_API_URL=http://localhost:5000/api` locally, and point it to your deployed Render API in production.
 
 ### 3. Seed & Run
 
@@ -210,6 +211,11 @@ vendor-system/
 2. Import `server/` on Render as a Web Service
 3. Import `client/` on Vercel as a Static Site
 4. Set environment variables on both platforms
+
+Recommended production variables:
+
+- Render backend: `MONGODB_URI`, `JWT_SECRET`, `FRONTEND_URL`, optional `SMTP_*`, optional `GOOGLE_CLIENT_ID`, optional `GOOGLE_CLIENT_SECRET`
+- Vercel frontend: `VITE_API_URL=https://<your-render-service>.onrender.com/api`, optional `VITE_GOOGLE_CLIENT_ID`
 
 ### Docker
 ```bash
