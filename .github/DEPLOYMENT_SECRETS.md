@@ -29,3 +29,32 @@ To use it, add these repository secrets in GitHub:
 
 - If the secrets are present, GitHub Actions triggers deployment automatically after CI succeeds on `main`
 - If the secrets are missing, the workflow still documents the CD process but deployment hooks are skipped
+
+## Demo deployment checklist
+
+1. Push the project to GitHub.
+2. In GitHub, open **Settings > Secrets and variables > Actions**.
+3. Add `RENDER_DEPLOY_HOOK_URL` and `VERCEL_DEPLOY_HOOK_URL`.
+4. Push to the `main` branch.
+5. Open **Actions** and confirm `CI Pipeline` passes.
+6. Confirm `CD Pipeline` runs after CI and triggers Render/Vercel.
+
+If Vercel and Render are directly connected to the GitHub repository, they can also auto-deploy on every push to `main`. In that setup, this CD workflow is still useful as an explicit deployment record in GitHub Actions.
+
+## Jenkins option
+
+This repository includes a root `Jenkinsfile` for Jenkins CI/CD.
+
+To use Jenkins:
+
+1. Install Jenkins with Node.js 20+ and Git available on the Jenkins agent.
+2. Create a Jenkins Pipeline job.
+3. Point the job to this GitHub repository.
+4. Set the pipeline script path to `Jenkinsfile`.
+5. Add two Jenkins secret text credentials:
+   - ID: `render-deploy-hook-url`
+   - ID: `vercel-deploy-hook-url`
+6. Run the job manually once.
+7. Add a GitHub webhook to Jenkins if you want the job to run automatically on push.
+
+The Jenkins pipeline installs backend dependencies, checks server syntax, installs frontend dependencies, builds the frontend, archives the built frontend files, and triggers Render/Vercel deploy hooks when the branch is `main`.

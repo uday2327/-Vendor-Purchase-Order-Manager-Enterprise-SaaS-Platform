@@ -17,6 +17,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     environment: production
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
 
     steps:
       - name: Explain deployment mode
@@ -25,22 +28,22 @@ jobs:
           echo "This workflow triggers hosting platform deploy hooks."
 
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
 
       - name: Trigger Vercel deploy
-        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' }}
-        run: curl -fsS -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
+        if: ${{ env.VERCEL_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
 
       - name: Summary
         run: |
-          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "Render deploy hook is not configured yet."
           else
             echo "Render deploy hook triggered."
           fi
 
-          if [ -z "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}" ]; then
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
             echo "Vercel deploy hook is not configured yet."
           else
             echo "Vercel deploy hook triggered."
