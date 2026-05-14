@@ -1,1040 +1,767 @@
-# Vendor & Purchase Order Manager — Complete Project Guide
+# Vendor and Purchase Order Manager - Complete Project Guide
 
----
-
-## Table of Contents
-
-1. [Project Overview](#1-project-overview)
-2. [Tech Stack & Dependencies](#2-tech-stack--dependencies)
-3. [Project Folder Structure](#3-project-folder-structure)
-4. [How To Run](#4-how-to-run)
-5. [Database Design — MongoDB Models](#5-database-design--mongodb-models)
-6. [Authentication & Authorization](#6-authentication--authorization)
-7. [Backend — Server Architecture](#7-backend--server-architecture)
-8. [Frontend — React Architecture](#8-frontend--react-architecture)
-9. [Every Feature Explained](#9-every-feature-explained)
-10. [Business Logic & Automated Systems](#10-business-logic--automated-systems)
-11. [AI Features](#11-ai-features)
-12. [API Reference](#12-api-reference)
-13. [Key Design Patterns](#13-key-design-patterns)
-14. [Glossary of Technologies](#14-glossary-of-technologies)
-
----
+This guide explains the project in detail for learning, demo preparation, and interview or viva discussion. It covers the application architecture, backend, frontend, database, authentication, deployment, CI/CD, Docker, and Jenkins.
 
 ## 1. Project Overview
 
-**Vendor & Purchase Order Manager** is a full-stack MERN application for managing procurement operations. It tracks the entire lifecycle:
+Vendor and Purchase Order Manager is a full-stack MERN application for procurement and vendor operations. It helps an organization manage vendors, purchase orders, invoices, payments, budgets, contracts, inventory, audit logs, notifications, and analytics.
 
-```
-Vendor → Purchase Order → Delivery → Invoice → Payment → Reconciliation
-```
+The project is built like a real business application. It has secure login, role-based access, dashboards, reports, background jobs, file import/export support, live notifications, API documentation, and deployment automation.
 
-**Who uses it?**
-- **Admin** — Full control over everything
-- **Manager** — Manages vendors & purchase orders
-- **Accountant** — Handles invoices, payments, journals
-- **Viewer** — Read-only access to key data
+Main users:
 
----
+| User Type | Main Responsibility |
+| --- | --- |
+| Admin | Manages the full system, users, audit logs, and configuration |
+| Manager | Manages vendors, purchase orders, contracts, inventory, and operational workflows |
+| Accountant | Manages invoices, payments, budgets, accounting, and finance-related records |
+| Viewer | Reads allowed information without changing important data |
 
-## 2. Tech Stack & Dependencies
+Procurement lifecycle:
 
-### Backend (Node.js + Express)
-
-| Package | What It Does |
-|---------|-------------|
-| **express** | Web server framework — handles HTTP requests, routing, middleware |
-| **mongoose** | MongoDB ORM — defines schemas, validates data, queries database |
-| **jsonwebtoken** (JWT) | Creates and verifies login tokens for authentication |
-| **bcryptjs** | Hashes passwords so they're never stored in plain text |
-| **cors** | Allows the React frontend (port 5173) to talk to the backend (port 5000) |
-| **dotenv** | Loads environment variables from `.env` file (DB URL, JWT secret) |
-| **express-rate-limit** | Prevents abuse by limiting API calls (e.g., 100 requests/15 min) |
-| **multer** | Handles file uploads (invoice PDFs, CSV files) |
-| **pdfkit** | Generates PDF documents for purchase orders |
-| **exceljs** | Creates Excel spreadsheets for data export |
-| **csv-parser** | Reads CSV files for bulk vendor/PO import |
-| **node-cron** | Schedules recurring tasks (check late deliveries every hour) |
-| **socket.io** | Real-time communication (instant notifications) |
-| **nodemailer** | Sends emails (payment confirmations, alerts) |
-| **swagger-jsdoc + swagger-ui-express** | Auto-generates API documentation at `/api/docs` |
-| **google-auth-library** | Verifies Google OAuth tokens for social login |
-| **speakeasy + qrcode** | Two-factor authentication (2FA) support |
-| **node-cache** | In-memory caching for frequently accessed data |
-
-### Frontend (React + Vite)
-
-| Package | What It Does |
-|---------|-------------|
-| **react** | UI library — builds the interface using components |
-| **react-dom** | Renders React components into the browser DOM |
-| **react-router-dom** | Client-side routing — navigates between pages without refresh |
-| **axios** | HTTP client — makes API calls to the backend |
-| **recharts** | Chart library — renders area charts, bar charts, line charts, pie charts |
-| **lucide-react** | Icon library — provides 1000+ SVG icons |
-| **react-hot-toast** | Toast notification popups (success/error messages) |
-| **socket.io-client** | Connects to backend Socket.io for real-time updates |
-| **@react-oauth/google** | Google login button component |
-| **tailwindcss** | Utility-first CSS framework — styles everything with classes |
-| **vite** | Build tool — fast development server with hot module replacement |
-
----
-
-## 3. Project Folder Structure
-
-```
-vendor system/
-├── client/                          # React Frontend
-│   ├── public/                      # Static files
-│   ├── src/
-│   │   ├── components/              # Reusable UI components
-│   │   │   ├── Layout.jsx           # Main layout (sidebar + header)
-│   │   │   ├── ProtectedRoute.jsx   # Auth guard wrapper
-│   │   │   ├── StatsCard.jsx        # Dashboard stat cards
-│   │   │   └── NotificationBell.jsx # Header notification dropdown
-│   │   ├── context/                 # React Context providers
-│   │   │   ├── AuthContext.jsx      # Authentication + RBAC permissions
-│   │   │   └── ThemeContext.jsx     # Dark/light mode + color themes
-│   │   ├── lib/
-│   │   │   └── api.js               # Axios instance with auth headers
-│   │   ├── pages/                   # One file per page/route
-│   │   │   ├── Login.jsx
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── Vendors.jsx
-│   │   │   ├── PurchaseOrders.jsx
-│   │   │   ├── Invoices.jsx
-│   │   │   ├── Payments.jsx
-│   │   │   ├── Analytics.jsx
-│   │   │   ├── KanbanBoard.jsx
-│   │   │   ├── Contracts.jsx
-│   │   │   ├── InventoryPage.jsx
-│   │   │   ├── Budgets.jsx
-│   │   │   ├── Forecast.jsx
-│   │   │   ├── VendorCompare.jsx
-│   │   │   ├── JournalEntries.jsx
-│   │   │   ├── Reconciliation.jsx
-│   │   │   ├── Users.jsx
-│   │   │   ├── AuditLogs.jsx
-│   │   │   └── AccessDenied.jsx
-│   │   ├── App.jsx                  # Route definitions
-│   │   ├── main.jsx                 # Entry point (providers wrap)
-│   │   └── index.css                # Global styles + theme variables
-│   ├── tailwind.config.js           # Tailwind CSS configuration
-│   └── package.json
-│
-├── server/                          # Node.js Backend
-│   ├── config/
-│   │   ├── db.js                    # MongoDB connection
-│   │   └── swagger.js               # API docs configuration
-│   ├── middleware/
-│   │   ├── auth.js                  # JWT token verification
-│   │   ├── rbac.js                  # Role-Based Access Control
-│   │   ├── errorHandler.js          # Global error handling
-│   │   └── rateLimiter.js           # Request rate limiting
-│   ├── models/                      # MongoDB schemas (20 models)
-│   │   ├── User.js
-│   │   ├── Vendor.js
-│   │   ├── PurchaseOrder.js
-│   │   ├── Invoice.js
-│   │   ├── Payment.js
-│   │   ├── Contract.js
-│   │   ├── Budget.js
-│   │   ├── Inventory.js
-│   │   ├── JournalEntry.js
-│   │   ├── AuditLog.js
-│   │   ├── Notification.js
-│   │   └── ... (9 more)
-│   ├── controllers/                 # Business logic (26 controllers)
-│   ├── routes/                      # API endpoint definitions (21 route files)
-│   ├── utils/
-│   │   └── auditLogger.js           # Audit trail helper
-│   ├── server.js                    # Entry point
-│   ├── seed.js                      # Database seeder
-│   ├── .env                         # Environment variables
-│   └── package.json
+```text
+Vendor
+Purchase Order
+Approval
+Delivery
+Invoice
+Payment
+Reporting
+Audit Log
 ```
 
----
+## 2. Technology Stack
 
-## 4. How To Run
+### Backend
 
-### Prerequisites
-- **Node.js** v18+ installed
-- **MongoDB** running (local or MongoDB Atlas cloud)
+| Technology | Purpose |
+| --- | --- |
+| Node.js | JavaScript runtime for the backend |
+| Express.js | HTTP server and routing framework |
+| Mongoose | MongoDB object modeling and schema validation |
+| JSON Web Token | Stateless authentication after login |
+| bcryptjs | Password hashing and password comparison |
+| cors | Allows the frontend domain to call backend APIs |
+| dotenv | Loads environment variables |
+| express-rate-limit | Limits repeated API calls |
+| multer | Handles file uploads |
+| exceljs | Generates Excel exports |
+| csv-parser | Reads CSV imports |
+| nodemailer | Sends emails |
+| socket.io | Supports real-time notifications |
+| node-cron | Runs scheduled backend jobs |
+| swagger-jsdoc and swagger-ui-express | Generates API documentation |
 
-### Step 1: Backend
+### Frontend
+
+| Technology | Purpose |
+| --- | --- |
+| React | Builds the user interface |
+| Vite | Development server and production build tool |
+| Tailwind CSS | Utility-based styling |
+| React Router | Client-side page routing |
+| Axios | HTTP client for API requests |
+| Recharts | Charts and dashboard visualizations |
+| Socket.io Client | Receives real-time events from backend |
+| React Hot Toast | Displays success and error messages |
+| Lucide React | Icon library used inside the UI |
+
+### DevOps And Deployment
+
+| Tool | Purpose |
+| --- | --- |
+| GitHub | Source code hosting |
+| GitHub Actions | Primary CI/CD automation |
+| Jenkins | Optional CI/CD pipeline for enterprise-style workflow |
+| Docker | Container packaging and local service setup |
+| Docker Compose | Runs frontend, backend, and MongoDB together locally |
+| Render | Hosts the backend service |
+| Vercel | Hosts the frontend application |
+| MongoDB Atlas | Hosts the production database |
+
+## 3. Folder Structure
+
+```text
+vendor-system/
+  client/
+    src/
+      components/
+      context/
+      lib/
+      pages/
+      App.jsx
+      main.jsx
+      index.css
+    Dockerfile
+    nginx.conf
+    package.json
+    vite.config.js
+    vercel.json
+
+  server/
+    config/
+      db.js
+      swagger.js
+    controllers/
+    middleware/
+      auth.js
+      rbac.js
+      errorHandler.js
+      rateLimiter.js
+    models/
+    routes/
+    utils/
+    Dockerfile
+    package.json
+    seed.js
+    server.js
+
+  .github/
+    workflows/
+      ci.yml
+      cd.yml
+    DEPLOYMENT_SECRETS.md
+
+  Jenkinsfile
+  docker-compose.yml
+  render.yaml
+  README.md
+  SYSTEM_DESIGN.md
+  PROJECT_GUIDE.md
+```
+
+## 4. How To Run Locally
+
+### Backend Setup
+
 ```bash
-cd "vendor system/server"
+cd server
 npm install
-# Create .env file with:
-#   MONGO_URI=mongodb://localhost:27017/vendor-manager
-#   JWT_SECRET=your-secret-key
-#   PORT=5000
-node seed.js          # Populate database with sample data
-node server.js        # Start backend on port 5000
 ```
 
-### Step 2: Frontend
+Create `server/.env`:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/vendor_po_manager
+JWT_SECRET=your-local-secret
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+ALLOW_PUBLIC_REGISTRATION=true
+```
+
+Seed demo data:
+
 ```bash
-cd "vendor system/client"
+node seed.js
+```
+
+Start backend:
+
+```bash
+node server.js
+```
+
+Backend runs on:
+
+```text
+http://localhost:5000
+```
+
+### Frontend Setup
+
+```bash
+cd client
 npm install
-npm run dev           # Start frontend on port 5173
 ```
 
-### Step 3: Open
-- App: http://localhost:5173
-- API Docs: http://localhost:5000/api/docs
-- Login: admin@vendor.com / admin123
+Create `client/.env`:
 
----
-
-## 5. Database Design — MongoDB Models
-
-### 5.1 User Model
-**File:** `server/models/User.js`
-
-Stores accounts with hashed passwords and role assignments.
-
-| Field | Type | Purpose |
-|-------|------|---------|
-| `name` | String | User's display name |
-| `email` | String (unique) | Login identifier |
-| `password` | String | Bcrypt-hashed password |
-| `role` | Enum | `admin`, `manager`, `accountant`, `viewer`, `vendor` |
-| `googleId` | String | For Google OAuth users |
-| `authProvider` | Enum | `local` or `google` |
-| `enable2FA` | Boolean | Two-factor auth toggle |
-
-**How password hashing works:**
-```javascript
-// Before saving, the "pre-save" hook runs:
-userSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) return next(); // Skip if password unchanged
-    const salt = await bcrypt.genSalt(10);           // Generate random salt
-    this.password = await bcrypt.hash(this.password, salt); // Hash password
-    next();
-});
-
-// When logging in, we compare:
-userSchema.methods.matchPassword = async function(entered) {
-    return await bcrypt.compare(entered, this.password);
-};
+```env
+VITE_API_URL=http://localhost:5000/api
 ```
 
-### 5.2 Vendor Model
-**File:** `server/models/Vendor.js`
+Start frontend:
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `name` | String | Company name |
-| `contactPerson` | String | Primary contact |
-| `phone`, `email` | String | Contact details |
-| `address` | String | Physical address |
-| `gstTaxId` | String | Tax identification number |
-| `rating` | Number (0-5) | Star rating |
-| `performanceScore` | Number (0-100) | Auto-calculated score based on delivery/payment history |
-| `itemPrices` | Array | Catalog of items with prices this vendor offers |
-| `riskIndex` | Enum | `Low`, `Medium`, `High` — vendor reliability risk |
-| `earlyPaymentDiscountPercentage` | Number | Discount for paying early |
-
-### 5.3 PurchaseOrder Model
-**File:** `server/models/PurchaseOrder.js`
-
-| Field | Type | Purpose |
-|-------|------|---------|
-| `poNumber` | String (auto) | Auto-generated: `PO-0001`, `PO-0002`, etc. |
-| `vendor` | ObjectId → Vendor | Link to vendor |
-| `items` | Array | `[{name, qty, unitPrice, total}]` |
-| `totalAmount` | Number (auto) | Sum of all item totals (calculated in pre-save) |
-| `orderDate` | Date | When the order was placed |
-| `expectedDeliveryDate` | Date | When delivery is expected |
-| `actualDeliveryDate` | Date | When delivery actually happened |
-| `status` | Enum | `Pending` → `Delivered` → `Cancelled` |
-| `isLateDelivery` | Boolean (auto) | `true` if actual > expected delivery date |
-| `isRecurring` | Boolean | Whether this PO auto-repeats |
-| `recurringInterval` | Enum | `Weekly`, `Monthly`, `Quarterly`, `None` |
-| `approvalStatus` | Enum | `Draft` → `Submitted` → `Approved` / `Rejected` |
-| `approvalHistory` | Array | Audit trail of who approved/rejected and when |
-
-**Auto-calculations in pre-save hook:**
-```javascript
-purchaseOrderSchema.pre('save', async function(next) {
-    // 1. Calculate item totals
-    this.items = this.items.map(item => {
-        item.total = item.qty * item.unitPrice;
-        return item;
-    });
-    this.totalAmount = this.items.reduce((sum, item) => sum + item.total, 0);
-
-    // 2. Detect late delivery
-    if (this.actualDeliveryDate && this.expectedDeliveryDate &&
-        this.actualDeliveryDate > this.expectedDeliveryDate) {
-        this.isLateDelivery = true;
-    }
-
-    // 3. Auto-generate PO number on creation
-    if (this.isNew) {
-        const count = await mongoose.model('PurchaseOrder').countDocuments();
-        this.poNumber = `PO-${String(count + 1).padStart(4, '0')}`;
-    }
-    next();
-});
+```bash
+npm run dev
 ```
 
-### 5.4 Invoice Model
-**File:** `server/models/Invoice.js`
+Frontend runs on:
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `purchaseOrder` | ObjectId → PO | Links invoice to its PO |
-| `vendor` | ObjectId → Vendor | Which vendor issued it |
-| `invoiceNumber` | String (unique) | e.g., `INV-2024-001` |
-| `amount` | Number | Invoice amount |
-| `paidAmount` | Number | How much has been paid |
-| `outstandingAmount` | Number (auto) | `netPayable - paidAmount` |
-| `paymentStatus` | Enum (auto) | `Unpaid` / `Partial` / `Paid` |
-| `dueDate` | Date | Payment deadline |
-| `taxableAmount`, `taxRate`, `taxAmount` | Number | Tax engine |
-| `withholdingPercentage`, `withholdingAmount` | Number | Tax withholding |
-| `netPayable` | Number (auto) | `amount + tax - withholding` |
-| `currency`, `exchangeRate` | String/Number | Multi-currency support |
-
-**Auto-calculated fields:**
-```javascript
-invoiceSchema.pre('save', function(next) {
-    this.taxAmount = this.taxableAmount * (this.taxRate / 100);
-    this.withholdingAmount = this.amount * (this.withholdingPercentage / 100);
-    this.netPayable = this.amount + this.taxAmount - this.withholdingAmount;
-    this.outstandingAmount = this.netPayable - this.paidAmount;
-
-    // Auto-determine payment status
-    if (this.paidAmount <= 0) this.paymentStatus = 'Unpaid';
-    else if (this.paidAmount >= this.netPayable) this.paymentStatus = 'Paid';
-    else this.paymentStatus = 'Partial';
-    next();
-});
+```text
+http://localhost:5173
 ```
 
-### 5.5 Payment Model
-**File:** `server/models/Payment.js`
+### Demo Login
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `invoice` | ObjectId → Invoice | Which invoice is being paid |
-| `vendor` | ObjectId → Vendor | Payee |
-| `amount` | Number | Payment amount |
-| `paymentMethod` | Enum | `Card`, `UPI`, `Bank Transfer`, `Manual` |
-| `transactionId` | String (auto) | Auto-generated: `TXN-...` |
-| `paymentStatus` | Enum | `Pending`, `Success`, `Failed`, `Refunded` |
-| `scheduledDate` | Date | For scheduled future payments |
-| `discountApplied` | Number | Early payment discount amount |
-| `idempotencyKey` | String | Prevents duplicate payments |
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | admin@vendor.com | admin123 |
 
-### 5.6 Other Models
+## 5. Backend Architecture
 
-| Model | File | Purpose |
-|-------|------|---------|
-| **Contract** | `Contract.js` | Vendor contracts with start/end dates, value, status |
-| **Budget** | `Budget.js` | Department budgets with allocated/utilized amounts |
-| **Inventory** | `Inventory.js` | Stock items with quantity, reorder point, unit cost |
-| **JournalEntry** | `JournalEntry.js` | Double-entry accounting: debits + credits |
-| **AuditLog** | `AuditLog.js` | Every system action logged (who, what, when) |
-| **Notification** | `Notification.js` | User notifications (late delivery, overspend, etc.) |
-| **BatchPayment** | `BatchPayment.js` | Group multiple payments together |
-| **Webhook** | `Webhook.js` | External system integration endpoints |
-| **VendorLedger** | `VendorLedger.js` | Running balance per vendor |
+The backend starts from `server/server.js`.
 
----
+Startup flow:
 
-## 6. Authentication & Authorization
-
-### 6.1 How Login Works
-
-```
-┌─────────┐      POST /api/auth/login       ┌──────────┐
-│  React   │  ────────────────────────────>  │  Express  │
-│ Frontend │  { email, password }            │ Backend   │
-│          │                                 │           │
-│          │  <────────────────────────────  │           │
-│          │  { token, user, role }           │           │
-└─────────┘                                  └──────────┘
-     │                                            │
-     │  Stores token in localStorage              │  1. Find user by email
-     │  Sets axios header:                        │  2. Compare hashed password
-     │  Authorization: Bearer <token>             │  3. Generate JWT token
-     │                                            │  4. Return user + token
+```text
+Load environment variables
+Connect to MongoDB
+Create Express app
+Create HTTP server
+Attach Socket.io
+Configure CORS
+Configure JSON body parsing
+Configure rate limiting
+Register static uploads
+Register Swagger documentation
+Register API routes
+Register error handlers
+Start cron jobs
+Start listening on PORT
 ```
 
-**JWT Token** is a base64-encoded string containing:
-```json
-{
-    "id": "user_id_here",      // Identifies the user
-    "iat": 1708876800,          // Issued at (timestamp)
-    "exp": 1711468800           // Expires in 30 days
-}
+### Database Connection
+
+The database connection is handled in:
+
+```text
+server/config/db.js
 ```
 
-### 6.2 How Protected Routes Work
+The backend reads:
 
-**Backend middleware** (`middleware/auth.js`):
-```javascript
-const protect = async (req, res, next) => {
-    // 1. Extract token from "Authorization: Bearer <token>" header
-    const token = req.headers.authorization?.split(' ')[1];
-
-    // 2. Verify token using JWT_SECRET
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // 3. Find user in database, attach to request
-    req.user = await User.findById(decoded.id).select('-password');
-
-    next(); // Allow the request to continue
-};
+```text
+MONGODB_URI
 ```
 
-### 6.3 Role-Based Access Control (RBAC)
+or the older supported name:
 
-**Backend middleware** (`middleware/rbac.js`):
-```javascript
-// Only allow specified roles
-const authorize = (...roles) => (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-        return res.status(403).json({ message: 'Access denied' });
-    }
-    next();
-};
-
-// Usage in routes:
-router.get('/vendors', protect, authorize('admin', 'manager', 'viewer'), getVendors);
-router.post('/vendors', protect, authorize('admin', 'manager'), createVendor);
+```text
+MONGO_URI
 ```
 
-**Frontend permissions** (`context/AuthContext.jsx`):
-```javascript
-const ROLE_PERMISSIONS = {
-    admin: {
-        canViewDashboard: true, canViewVendors: true, canWriteVendors: true,
-        canViewPurchaseOrders: true, canWritePurchaseOrders: true,
-        canViewInvoices: true, canViewAnalytics: true, canViewUsers: true,
-        // ... all true
-    },
-    manager: {
-        canViewDashboard: true, canViewVendors: true, canWriteVendors: true,
-        canViewInvoices: false,  // Can't see invoices
-        canViewUsers: false,     // Can't manage users
-        // ...
-    },
-    accountant: {
-        canViewVendors: false,   // Can't see vendors
-        canViewInvoices: true,   canWriteInvoices: true,
-        canViewPayments: true,   canViewJournal: true,
-        // Focused on financial pages
-    },
-    viewer: {
-        // Read-only access to most pages, no write permissions
-    },
-};
+If no database connection string exists, the backend stops because the application cannot safely run without a database.
+
+### Route Structure
+
+Routes are stored in `server/routes`. Controllers are stored in `server/controllers`.
+
+Route files define API paths. Controller files contain business logic.
+
+Example flow:
+
+```text
+/api/vendors request
+vendorRoutes.js matches route
+auth middleware verifies token
+rbac middleware checks role
+vendorController.js runs logic
+Vendor.js model queries MongoDB
+JSON response returns to frontend
 ```
 
-**How pages are protected** (`App.jsx`):
-```jsx
-// Each route checks a permission key before rendering
-const route = (path, perm, Component) => (
-    <Route path={path} element={
-        <ProtectedRoute>      {/* Must be logged in */}
-            <RoleRoute permissionKey={perm}>  {/* Must have permission */}
-                <Layout><Component /></Layout>
-            </RoleRoute>
-        </ProtectedRoute>
-    } />
-);
+## 6. Frontend Architecture
 
-// Routes:
-{route('/', 'canViewDashboard', Dashboard)}
-{route('/vendors', 'canViewVendors', Vendors)}
-{route('/invoices', 'canViewInvoices', Invoices)}
+The frontend is a React application built with Vite.
+
+Important files:
+
+| File | Purpose |
+| --- | --- |
+| `client/src/main.jsx` | React entry point |
+| `client/src/App.jsx` | Route definitions |
+| `client/src/context/AuthContext.jsx` | Stores login state and user permissions |
+| `client/src/context/ThemeContext.jsx` | Stores theme state |
+| `client/src/lib/api.js` | Axios API client |
+| `client/src/components/Layout.jsx` | Main protected application layout |
+| `client/src/components/ProtectedRoute.jsx` | Prevents unauthenticated access |
+
+Frontend request flow:
+
+```text
+Page component needs data
+Component calls API helper
+Axios sends request to VITE_API_URL
+Token is sent in Authorization header
+Backend returns JSON
+Frontend updates state
+UI re-renders
 ```
 
----
+## 7. Authentication
 
-## 7. Backend — Server Architecture
+Authentication is based on JWT.
 
-### 7.1 Request Flow
+Login flow:
 
-```
-Client Request
-      │
-      ▼
-  ┌────────────┐
-  │   CORS     │  Allows cross-origin requests
-  └────────────┘
-      │
-      ▼
-  ┌────────────┐
-  │ Rate Limit │  100 requests per 15 minutes
-  └────────────┘
-      │
-      ▼
-  ┌────────────┐
-  │   Router   │  Matches URL to route handler
-  └────────────┘
-      │
-      ▼
-  ┌────────────┐
-  │  protect   │  Verifies JWT token
-  └────────────┘
-      │
-      ▼
-  ┌────────────┐
-  │ authorize  │  Checks user role
-  └────────────┘
-      │
-      ▼
-  ┌────────────┐
-  │ Controller │  Business logic + database operations
-  └────────────┘
-      │
-      ▼
-  JSON Response
+```text
+User enters email and password
+Frontend sends POST /api/auth/login
+Backend finds user by email
+Backend compares entered password with hashed password
+Backend creates JWT token
+Frontend stores token and user details
+Frontend redirects user to dashboard
 ```
 
-### 7.2 How a Controller Works (Example: Create Vendor)
+Protected request flow:
 
-```javascript
-// controllers/vendorController.js
-const createVendor = async (req, res) => {
-    try {
-        // 1. Extract data from request body
-        const { name, contactPerson, phone, email, address } = req.body;
-
-        // 2. Create vendor in MongoDB
-        const vendor = await Vendor.create({
-            name, contactPerson, phone, email, address
-        });
-
-        // 3. Log audit trail
-        await logAudit(req.user._id, 'CREATE', 'Vendor', vendor._id);
-
-        // 4. Send response
-        res.status(201).json(vendor);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
+```text
+Frontend sends Authorization: Bearer token
+Backend verifies token using JWT_SECRET
+Backend finds user from token id
+Backend attaches user to request
+Controller handles the request
 ```
 
-### 7.3 Cron Jobs (Scheduled Tasks)
+Passwords are not stored as plain text. The `User` model hashes passwords using bcrypt before saving.
 
-**File:** `server/server.js`
+## 8. Authorization And Roles
 
-| Schedule | Task | What It Does |
-|----------|------|-------------|
-| Every hour | `generateNotifications()` | Checks for late deliveries, overdue invoices, creates notifications |
-| Every midnight | Recurring PO check | Finds delivered recurring POs, auto-generates new ones |
-| Every 6 hours | `checkReorderPoints()` | Checks inventory levels, creates POs for low-stock items |
-| Every 30 min | `processScheduledPayments()` | Processes payments scheduled for today |
+The project uses Role-Based Access Control.
 
----
+Role checking happens in backend middleware. The frontend may hide pages, but backend authorization is the real protection.
 
-## 8. Frontend — React Architecture
+| Role | Typical Access |
+| --- | --- |
+| Admin | Full system access |
+| Manager | Vendor, purchase order, contract, inventory, budget, and analytics workflows |
+| Accountant | Invoice, payment, budget, accounting, and finance workflows |
+| Viewer | Read-only access where allowed |
 
-### 8.1 Component Hierarchy
+If a user does not have permission, the backend returns an authorization error.
 
-```
-main.jsx
-├── GoogleOAuthProvider     (Google login support)
-├── BrowserRouter           (URL routing)
-├── ThemeProvider            (Dark mode + color themes)
-├── AuthProvider             (Login state + permissions)
-├── App                      (Route definitions)
-│   ├── Login               (Public page)
-│   └── ProtectedRoute      (Auth guard)
-│       └── RoleRoute        (Permission check)
-│           └── Layout       (Sidebar + Header)
-│               ├── Sidebar navigation
-│               ├── Theme picker
-│               ├── NotificationBell
-│               └── {Page Component}  (Dashboard, Vendors, etc.)
-└── Toaster                  (Toast notifications)
-```
+## 9. Main Features
 
-### 8.2 How API Calls Work
+### Vendor Management
 
-**File:** `client/src/lib/api.js`
-```javascript
-import axios from 'axios';
-
-const api = axios.create({
-    baseURL: '/api',  // Proxied to localhost:5000 by Vite
-});
-
-// Automatically attach JWT token to every request
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-});
-
-export default api;
-```
-
-**Usage in a page:**
-```javascript
-// Dashboard.jsx
-const { data } = await api.get('/dashboard');  // GET /api/dashboard
-setStats(data);  // Update component state with response data
-```
-
-### 8.3 How React Context Works
-
-**Context** is React's way to share data between all components without passing props down every level.
-
-```
-┌─────────────────────────────────────────┐
-│ AuthProvider (wraps entire app)         │
-│                                         │
-│ Provides: user, token, role,            │
-│           permissions, login(), logout() │
-│                                         │
-│  ┌──────────────────────────────────┐   │
-│  │ Any child component can access:  │   │
-│  │   const { user, role } = useAuth() │ │
-│  │                                  │   │
-│  │   if (permissions.canViewVendors)│   │
-│  │       show Vendors page          │   │
-│  └──────────────────────────────────┘   │
-└─────────────────────────────────────────┘
-```
-
-### 8.4 How Tailwind CSS Works
-
-Instead of writing CSS files, you apply utility classes directly:
-
-```html
-<!-- Traditional CSS: -->
-<div class="card">...</div>
-/* card { background: white; border-radius: 16px; padding: 24px; } */
-
-<!-- Tailwind CSS: -->
-<div class="bg-white rounded-2xl p-6 shadow-card border border-slate-100">...</div>
-```
-
-**Custom theme colors** (defined via CSS variables):
-```css
-/* index.css — changes when theme switches */
-:root[data-accent="indigo"] {
-    --primary-500: 99 102 241;  /* Purple-blue */
-}
-:root[data-accent="emerald"] {
-    --primary-500: 16 185 129;  /* Green */
-}
-```
-
-```javascript
-/* tailwind.config.js — references the variables */
-colors: {
-    primary: {
-        500: withOpacity('--primary-500'),  // Uses CSS variable
-    }
-}
-```
-
-Now `bg-primary-500` automatically changes color when the theme switches!
-
----
-
-## 9. Every Feature Explained
-
-### 9.1 Dashboard
-**Files:** `Dashboard.jsx` + `dashboardController.js`
-
-Shows overview cards:
-- Total Vendors, Purchase Orders, Pending Payments, Overdue Payments, Late Deliveries, Outstanding Amount
-- **Monthly Purchase Trend** — Area chart showing spending over last 12 months
-- **Top Vendor** — Highest performing vendor by score
-- **Vendor-wise Expense** — Horizontal bar chart of spending per vendor
-
-### 9.2 Vendors
-**Files:** `Vendors.jsx` + `vendorController.js` + `Vendor.js`
-
-Full CRUD for suppliers:
-- Add/Edit/Delete vendors with contact details, tax ID
-- View vendor performance score (auto-calculated from delivery history)
-- Risk index classification (Low/Medium/High)
-- Item price catalog per vendor
-
-### 9.3 Purchase Orders
-**Files:** `PurchaseOrders.jsx` + `poController.js` + `PurchaseOrder.js`
-
-- Create multi-item orders linked to vendors
-- Auto-generated PO numbers (PO-0001, PO-0002...)
-- Status flow: Pending → Delivered → Cancelled
-- Approval workflow: Draft → Submitted → Approved/Rejected
-- Recurring order settings (Weekly/Monthly/Quarterly)
-- Expected vs actual delivery date tracking
-- PDF export of PO documents
-
-### 9.4 Invoices
-**Files:** `Invoices.jsx` + `invoiceController.js` + `Invoice.js`
-
-- Link invoices to purchase orders
-- Track payment status: Unpaid → Partial → Paid
-- Auto-calculate outstanding = amount + tax - withholding - paid
-- File upload for invoice documents
-- Multi-currency support with exchange rates
-- Tax engine (taxable amount, tax rate, withholding)
-
-### 9.5 Payments
-**Files:** `Payments.jsx` + `paymentController.js` + `Payment.js`
-
-- Record payments against invoices
-- Multiple methods: Card, UPI, Bank Transfer, Manual
-- Auto-generated transaction IDs
-- Scheduled future payments (cron processes them)
-- Early payment discount calculation
-- Payment approval workflow
-- Idempotency keys prevent duplicate payments
-
-### 9.6 Kanban Board
-**File:** `KanbanBoard.jsx`
-
-Visual drag-and-drop board for PO status tracking:
-```
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│  Pending  │  │ Delivered │  │ Cancelled │
-│           │  │           │  │           │
-│  PO-0001  │  │  PO-0003  │  │  PO-0005  │
-│  PO-0002  │  │  PO-0004  │  │           │
-└──────────┘  └──────────┘  └──────────┘
-```
-
-### 9.7 Analytics
-**Files:** `Analytics.jsx` + `analyticsController.js`
-
-4 analytics views:
-1. **Payment Aging** — Pie chart (0-30, 31-60, 61-90, 90+ days)
-2. **Vendor Spend** — Bar chart of top spenders
-3. **Monthly PO Growth** — Line chart with growth %
-4. **Vendor Reliability** — Table with scores, on-time %, risk index
-
-### 9.8 Contracts
-**Files:** `Contracts.jsx` + `contractController.js` + `Contract.js`
-
-- Vendor contracts with start/end dates
-- Contract value and status tracking
-- Renewal reminders
-
-### 9.9 Inventory
-**Files:** `InventoryPage.jsx` + `inventoryController.js` + `Inventory.js`
-
-- Track stock quantities per item
-- Reorder point alerts (cron checks every 6 hours)
-- Auto-create PO when stock falls below reorder level
-- Unit cost tracking
-
-### 9.10 Budgets
-**Files:** `Budgets.jsx` + `budgetController.js` + `Budget.js`
-
-- Department-level budget allocation
-- Track utilized vs remaining budget
-- Budget exceeded notifications
-
-### 9.11 Forecasting
-**File:** `Forecast.jsx` + `forecastController.js`
-
-- Spending prediction based on historical data
-- Trend analysis and projections
-
-### 9.12 Vendor Compare
-**File:** `VendorCompare.jsx`
-
-- Side-by-side comparison of vendor metrics
-- Performance scores, total spend, delivery reliability
-
-### 9.13 Journal Entries
-**Files:** `JournalEntries.jsx` + `journalController.js` + `JournalEntry.js`
-
-- Double-entry accounting (every transaction has a debit and credit)
-- Links to invoices and payments
-- Account-level tracking
-
-### 9.14 Reconciliation
-**Files:** `Reconciliation.jsx` + `reconciliationController.js`
-
-- Match payments to invoices
-- Identify discrepancies
-- Reconciliation status tracking
-
-### 9.15 User Management
-**Files:** `Users.jsx` + `userController.js`
-
-- Admin can create/edit/delete users
-- Assign roles (admin, manager, accountant, viewer)
-- View user activity
-
-### 9.16 Audit Logs
-**Files:** `AuditLogs.jsx` + `auditController.js` + `AuditLog.js`
-
-Every system action is logged:
-```json
-{
-    "user": "Admin",
-    "action": "CREATE",
-    "entity": "PurchaseOrder",
-    "entityId": "PO-0015",
-    "timestamp": "2026-02-25T10:30:00Z"
-}
-```
-
-### 9.17 Notifications
-**File:** `NotificationBell.jsx` + `notificationController.js`
-
-Real-time bell notifications for:
-- Late deliveries
-- Overdue invoices
-- Overspending alerts
-- Budget exceeded
-- PO approved/rejected
-- Payment received
-
----
-
-## 10. Business Logic & Automated Systems
-
-### 10.1 Complete Order Lifecycle
-
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│  Create   │ ──> │ Approve  │ ──> │ Deliver  │ ──> │ Invoice  │
-│    PO     │     │   PO     │     │  (mark   │     │  Created │
-│           │     │          │     │  actual   │     │          │
-│Draft/     │     │Submitted/│     │  date)   │     │ Unpaid   │
-│Pending    │     │Approved  │     │          │     │          │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-                                                         │
-                                                         ▼
-                                                   ┌──────────┐
-                                                   │  Payment  │
-                                                   │  (full or │
-                                                   │  partial) │
-                                                   │           │
-                                                   │ → Updates │
-                                                   │  invoice  │
-                                                   │  status   │
-                                                   └──────────┘
-```
-
-### 10.2 Vendor Performance Score Calculation
-
-```javascript
-// vendorController.js — when fetching vendor detail
-const totalOrders = await PurchaseOrder.countDocuments({ vendor: id });
-const lateOrders = await PurchaseOrder.countDocuments({
-    vendor: id, isLateDelivery: true
-});
-const onTimeRate = totalOrders > 0 ? ((totalOrders - lateOrders) / totalOrders) : 0;
-
-const performanceScore = Math.round(
-    (onTimeRate * 0.6 + (vendor.rating / 5) * 0.4) * 100
-);
-// 60% weight on delivery reliability, 40% on star rating
-```
-
-### 10.3 Recurring Orders (Cron)
-
-```javascript
-// server.js — runs at midnight daily
-cron.schedule('0 0 * * *', async () => {
-    // Find recurring POs that have been delivered
-    const recurringPOs = await PurchaseOrder.find({
-        isRecurring: true,
-        recurringInterval: { $ne: 'None' },
-        status: 'Delivered'
-    });
-
-    for (const po of recurringPOs) {
-        const intervalDays = { Weekly: 7, Monthly: 30, Quarterly: 90 };
-        const daysSinceOrder = (Date.now() - po.orderDate) / (1000 * 60 * 60 * 24);
-
-        if (daysSinceOrder >= intervalDays[po.recurringInterval]) {
-            // Create new PO with same items/vendor
-            const newPO = new PurchaseOrder({
-                vendor: po.vendor,
-                items: po.items,
-                isRecurring: true,
-                recurringInterval: po.recurringInterval,
-            });
-            await newPO.save();
-        }
-    }
-});
-```
-
----
-
-## 11. AI Features
-
-### 11.1 Best Vendor Suggestion
-
-**Endpoint:** `GET /api/vendors/suggest?item=Paper`
-
-**How it works:**
-1. Searches all vendors whose `itemPrices` catalog contains the requested item
-2. For each matching vendor, examines delivery history and pricing
-3. Ranks by composite score: **price (lower = better) + reliability (higher = better)**
-4. Returns the top recommendation with reasoning
-
-### 11.2 Overspending Detection
-
-**Endpoint:** `POST /api/purchase-orders/overspending-check`
-
-**How it works:**
-1. Takes an item name and current price
-2. Queries all historical POs containing that same item
-3. Calculates the **average historical price**
-4. If current price is significantly above average, flags it as overspending
-5. Returns percentage difference and suggested fair price
-
----
-
-## 12. API Reference
-
-### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Login with email/password → returns JWT token |
-| POST | `/api/auth/register` | Create new user account |
-| GET | `/api/auth/me` | Get current logged-in user |
-
-### Vendors
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/vendors` | List all vendors |
-| POST | `/api/vendors` | Create vendor |
-| GET | `/api/vendors/:id` | Get vendor detail + performance |
-| PUT | `/api/vendors/:id` | Update vendor |
-| DELETE | `/api/vendors/:id` | Delete vendor |
-| GET | `/api/vendors/suggest?item=X` | AI: suggest best vendor for item |
+Vendors store contact details, GST or tax information, item prices, rating, performance score, and risk information. Vendor data is used by purchase orders, contracts, invoices, inventory, and analytics.
 
 ### Purchase Orders
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/purchase-orders` | List all POs (filterable) |
-| POST | `/api/purchase-orders` | Create new PO |
-| PUT | `/api/purchase-orders/:id` | Update PO |
-| DELETE | `/api/purchase-orders/:id` | Delete PO |
-| POST | `/api/purchase-orders/overspending-check` | AI: check overspending |
 
-### Invoices
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/invoices` | List all invoices |
-| POST | `/api/invoices` | Create invoice linked to PO |
-| PUT | `/api/invoices/:id` | Update invoice |
-| DELETE | `/api/invoices/:id` | Delete/archive invoice |
+Purchase orders store the vendor, line items, quantity, price, total amount, department, status, approval status, and recurring information. The workflow supports draft, submitted, approved, rejected, delivered, and cancelled states depending on the controller logic.
 
-### Payments
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/payments` | List all payments |
-| POST | `/api/payments` | Record a payment |
-| PUT | `/api/payments/:id` | Update payment |
+### Invoices And Payments
 
-### Dashboard & Analytics
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/dashboard` | Dashboard stats + charts data |
-| GET | `/api/analytics/payment-aging` | Payment aging breakdown |
-| GET | `/api/analytics/vendor-spend` | Spend per vendor |
-| GET | `/api/analytics/monthly-growth` | Monthly PO growth trend |
-| GET | `/api/analytics/vendor-reliability` | Vendor reliability rankings |
+Invoices track amount, paid amount, outstanding amount, due date, and payment status. Payments update invoice status and help finance reports show outstanding or overdue amounts.
 
-### Other Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST | `/api/budgets` | Budget management |
-| GET/POST | `/api/contracts` | Contract management |
-| GET/POST | `/api/inventory` | Inventory management |
-| GET/POST | `/api/journal-entries` | Journal entries |
-| GET | `/api/reconciliation` | Reconciliation data |
-| GET | `/api/notifications` | User notifications |
-| GET | `/api/audit-logs` | Audit trail |
-| GET/POST | `/api/users` | User management |
-| GET/POST | `/api/export/*` | Excel export |
-| POST | `/api/import/csv` | CSV import |
-| GET | `/api/health` | Server health check |
+### Dashboard
 
----
+The dashboard summarizes key business information such as total vendors, purchase orders, pending payments, overdue payments, purchase trends, and vendor performance.
 
-## 13. Key Design Patterns
+### Analytics
 
-### 13.1 Pre-Save Hooks (Mongoose Middleware)
-Code that runs automatically before saving a document:
-```javascript
-schema.pre('save', function(next) {
-    // Auto-calculate fields, validate data, generate IDs
-    next();
-});
-```
-Used in: PurchaseOrder (total, PO number, late detection), Invoice (tax, outstanding), Payment (transaction ID), User (password hashing)
+Analytics includes payment aging, vendor spend, monthly growth, vendor reliability, forecasting, anomaly detection, compliance reports, and vendor comparison.
 
-### 13.2 React Context Pattern
-Share state across all components without prop drilling:
-```javascript
-// Create context
-const AuthContext = createContext();
+### Inventory
 
-// Provider wraps the app
-<AuthContext.Provider value={{ user, login, logout }}>
-    {children}
-</AuthContext.Provider>
+Inventory tracks stock items, current stock, reorder point, reorder quantity, and preferred vendor. Scheduled jobs can check inventory levels and help create reorder workflows.
 
-// Any component can consume
-const { user } = useContext(AuthContext);
+### Contracts
+
+Contracts track vendor agreements, start date, end date, value, status, and renewal reminders.
+
+### Audit Logs
+
+Audit logs record important user actions. This is useful for compliance, debugging, and accountability.
+
+### Notifications
+
+Notifications inform users about important events. Socket.io allows the frontend to receive updates without refreshing.
+
+## 10. API Reference Summary
+
+| Method Type | Route Area | Purpose |
+| --- | --- | --- |
+| POST | `/api/auth/login` | Login and receive JWT token |
+| GET/POST/PUT/DELETE | `/api/vendors` | Vendor CRUD |
+| GET/POST/PUT/DELETE | `/api/purchase-orders` | Purchase order CRUD and workflow |
+| GET/POST/PUT/DELETE | `/api/invoices` | Invoice management |
+| GET/POST | `/api/payments` | Payment records |
+| GET | `/api/dashboard` | Dashboard stats |
+| GET | `/api/analytics` | Reports and charts |
+| GET/POST/PUT/DELETE | `/api/budgets` | Budget management |
+| GET | `/api/audit-logs` | Audit log viewing |
+| GET/PUT | `/api/notifications` | Notification viewing and read status |
+| POST | `/api/import` | CSV import |
+| GET | `/api/export` | Excel export |
+| GET/POST/PUT/DELETE | `/api/contracts` | Contract management |
+| GET/POST/PUT/DELETE | `/api/inventory` | Inventory management |
+| GET/POST/PUT/DELETE | `/api/webhooks` | Webhook configuration |
+
+Swagger documentation is available locally at:
+
+```text
+http://localhost:5000/api/docs
 ```
 
-### 13.3 Protected Route Pattern
-Components that redirect to login if not authenticated:
-```jsx
-const ProtectedRoute = ({ children }) => {
-    const { token, loading } = useAuth();
-    if (loading) return <Spinner />;
-    if (!token) return <Navigate to="/login" />;
-    return children;
-};
+## 11. Environment Variables
+
+### Backend Variables
+
+| Variable | Purpose |
+| --- | --- |
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret used to sign and verify JWT tokens |
+| `PORT` | Backend server port |
+| `NODE_ENV` | Environment mode |
+| `FRONTEND_URL` | Allowed frontend URL for CORS and links |
+| `ALLOW_PUBLIC_REGISTRATION` | Enables or disables public signup |
+| `SMTP_HOST` | Email server host |
+| `SMTP_PORT` | Email server port |
+| `SMTP_USER` | Email username |
+| `SMTP_PASS` | Email password |
+| `GOOGLE_CLIENT_ID` | Google OAuth client id |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth secret |
+
+### Frontend Variables
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_API_URL` | Backend API base URL |
+| `VITE_GOOGLE_CLIENT_ID` | Optional Google login client id |
+
+## 12. Production Deployment
+
+Production deployment uses:
+
+```text
+Vercel for frontend
+Render for backend
+MongoDB Atlas for database
 ```
 
-### 13.4 Audit Trail Pattern
-Every important action is logged:
-```javascript
-await logAudit(userId, 'CREATE', 'PurchaseOrder', poId, { details });
+### Render Backend
+
+Render uses `render.yaml`.
+
+Build command:
+
+```bash
+cd server && npm ci
 ```
 
----
+Start command:
 
-## 14. Glossary of Technologies
+```bash
+cd server && node server.js
+```
 
-| Term | What It Is |
-|------|-----------|
-| **MERN** | MongoDB + Express + React + Node.js — full-stack JavaScript |
-| **REST API** | Architectural style — uses HTTP methods (GET, POST, PUT, DELETE) for CRUD |
-| **JWT** | JSON Web Token — encrypted token for stateless authentication |
-| **Mongoose** | ODM (Object Data Modeling) library that maps MongoDB documents to JavaScript objects |
-| **Middleware** | Functions that run between receiving a request and sending a response |
-| **RBAC** | Role-Based Access Control — different permissions for different user types |
-| **CRUD** | Create, Read, Update, Delete — the four basic data operations |
-| **Context API** | React's built-in way to pass data through component trees |
-| **CSS Variables** | Custom properties like `--primary-500` that can change dynamically |
-| **Cron Job** | Scheduled task that runs at specific times (like a timer) |
-| **Socket.io** | Library for real-time, bidirectional communication between client and server |
-| **Axios** | Promise-based HTTP client for making API calls |
-| **Vite** | Modern build tool that provides fast dev server with hot module replacement |
-| **Pre-save Hook** | Mongoose lifecycle method that runs before a document is saved to MongoDB |
-| **Idempotency** | Ensuring the same operation produces the same result if repeated |
+Important Render variables:
 
----
+```text
+MONGODB_URI
+JWT_SECRET
+NODE_ENV=production
+FRONTEND_URL=https://your-vercel-app.vercel.app
+ALLOW_PUBLIC_REGISTRATION=false
+```
 
-**End of Document**
+### Vercel Frontend
 
-*Generated: February 25, 2026*
-*Project: Vendor & Purchase Order Manager v5.0.0*
+Vercel builds the frontend from the `client` directory.
+
+Important Vercel variable:
+
+```text
+VITE_API_URL=https://your-render-service.onrender.com/api
+```
+
+`client/vercel.json` contains a rewrite to `index.html` so React Router works after page refresh.
+
+## 13. Docker
+
+Docker Compose starts the full stack locally:
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+| Service | Port | Purpose |
+| --- | --- | --- |
+| mongodb | 27017 | Local database |
+| server | 5000 | Backend API |
+| client | 3000 | Frontend served by Nginx |
+
+The backend Dockerfile creates a Node.js image. The frontend Dockerfile builds the Vite app and serves the static output with Nginx.
+
+Docker is also checked in CI to confirm the project can be containerized.
+
+## 14. GitHub Actions CI
+
+CI means Continuous Integration. It checks whether new code is healthy before deployment.
+
+Workflow file:
+
+```text
+.github/workflows/ci.yml
+```
+
+Trigger:
+
+```text
+Push to main
+Push to develop
+Pull request to main
+```
+
+CI jobs:
+
+### Server Checks
+
+The server job:
+
+1. Starts MongoDB in GitHub Actions.
+2. Installs backend dependencies with `npm ci`.
+3. Checks backend syntax with `node --check server.js`.
+4. Seeds the CI database with `node seed.js`.
+5. Starts the backend on port `5050`.
+6. Tests `/api/health`.
+7. Logs in with seeded admin credentials.
+8. Extracts the JWT token.
+9. Calls the authenticated dashboard API.
+
+This confirms the backend can install, connect to MongoDB, start, authenticate, and serve protected data.
+
+### Client Build
+
+The client job:
+
+1. Installs frontend dependencies with `npm ci`.
+2. Builds the frontend with `npm run build`.
+
+This confirms the frontend can build for production.
+
+### Docker Build Test
+
+The Docker job:
+
+1. Validates `docker-compose.yml`.
+2. Builds the backend Docker image.
+3. Builds the frontend Docker image.
+
+This confirms the Docker setup is valid.
+
+## 15. GitHub Actions CD
+
+CD means Continuous Deployment. It deploys code after CI passes.
+
+Workflow file:
+
+```text
+.github/workflows/cd.yml
+```
+
+CD starts after the CI workflow completes. It deploys only if:
+
+```text
+CI result is success
+branch is main
+```
+
+Required GitHub repository secrets:
+
+```text
+RENDER_DEPLOY_HOOK_URL
+VERCEL_DEPLOY_HOOK_URL
+```
+
+CD calls these deploy hooks with `curl`. Render and Vercel then pull the latest code and redeploy.
+
+Secrets must be stored in GitHub settings, not in code:
+
+```text
+Settings
+Secrets and variables
+Actions
+New repository secret
+```
+
+## 16. Jenkins
+
+Jenkins is an optional alternative CI/CD system for this project.
+
+Pipeline file:
+
+```text
+Jenkinsfile
+```
+
+Jenkins pipeline stages:
+
+1. Install backend dependencies.
+2. Check backend syntax.
+3. Install frontend dependencies.
+4. Build frontend.
+5. Trigger Render and Vercel deploy hooks on the `main` branch.
+6. Archive frontend build files.
+
+Jenkins credentials needed:
+
+```text
+render-deploy-hook-url
+vercel-deploy-hook-url
+```
+
+Jenkins workflow:
+
+```text
+Developer pushes code to GitHub
+GitHub webhook calls Jenkins
+Jenkins pulls latest code
+Jenkins reads Jenkinsfile
+Jenkins runs pipeline stages
+Jenkins triggers Render and Vercel deploy hooks
+Live app updates
+```
+
+If Jenkins is used as the main deployment system, GitHub Actions deployment should be disabled to avoid duplicate deployments.
+
+## 17. GitHub Actions Compared With Jenkins
+
+| Topic | GitHub Actions | Jenkins |
+| --- | --- | --- |
+| Hosting | Built into GitHub | Requires Jenkins server |
+| Setup | Easier for GitHub repositories | More setup and maintenance |
+| Secrets | GitHub repository secrets | Jenkins credentials |
+| Pipeline file | YAML workflow files | Jenkinsfile |
+| Best for this project | Simple primary CI/CD | Optional enterprise-style learning |
+| Deployment risk if both are active | May duplicate deployment | May duplicate deployment |
+
+Recommended explanation:
+
+```text
+GitHub Actions is the primary CI/CD pipeline because it is integrated with GitHub and simple to operate. Jenkinsfile is included to demonstrate how the same project can be moved to an enterprise Jenkins pipeline. In production we would choose one deployment orchestrator to avoid duplicate deployments.
+```
+
+## 18. Full Workflow When Code Is Updated
+
+GitHub Actions workflow:
+
+```text
+Developer updates code
+Developer commits changes
+Developer pushes to main
+GitHub starts CI
+Backend dependencies install
+MongoDB test service starts
+Backend syntax check runs
+Seed script runs
+Health API is tested
+Login API is tested
+Dashboard API is tested with JWT
+Frontend dependencies install
+Frontend production build runs
+Docker config and images are checked
+CI passes
+GitHub starts CD
+CD reads GitHub secrets
+CD triggers Render backend hook
+CD triggers Vercel frontend hook
+Render redeploys backend
+Vercel redeploys frontend
+Live project updates
+```
+
+Jenkins workflow:
+
+```text
+Developer updates code
+Developer pushes to GitHub
+GitHub webhook triggers Jenkins
+Jenkins pulls latest code
+Jenkins installs backend dependencies
+Jenkins checks backend syntax
+Jenkins installs frontend dependencies
+Jenkins builds frontend
+Jenkins reads deploy hook credentials
+Jenkins triggers Render and Vercel
+Live project updates
+```
+
+## 19. Common Issues
+
+### Frontend Cannot Reach Backend
+
+Check Vercel environment variable:
+
+```text
+VITE_API_URL=https://your-render-service.onrender.com/api
+```
+
+Check Render environment variable:
+
+```text
+FRONTEND_URL=https://your-vercel-app.vercel.app
+```
+
+### CORS Error
+
+The backend is rejecting the frontend origin. Set `FRONTEND_URL` in Render to the exact Vercel frontend URL.
+
+### Backend Cannot Connect To MongoDB
+
+Check `MONGODB_URI`, MongoDB Atlas username/password, and Atlas network access.
+
+### CI Fails At Seed Script
+
+Check that the GitHub Actions MongoDB service started correctly and that `MONGODB_URI` points to the CI MongoDB instance.
+
+### Frontend Build Fails
+
+Check imports, missing files, package versions, and Vite environment variables.
+
+### CD Does Not Deploy
+
+Check that GitHub repository secrets exist:
+
+```text
+RENDER_DEPLOY_HOOK_URL
+VERCEL_DEPLOY_HOOK_URL
+```
+
+Open GitHub Actions logs and look for:
+
+```text
+Render deploy hook triggered.
+Vercel deploy hook triggered.
+```
+
+### Docker Build Fails Locally
+
+Make sure Docker Desktop is running. Local Docker errors can happen even when GitHub Actions Docker checks work.
+
+## 20. Demo Explanation
+
+Short version:
+
+```text
+This is a full-stack MERN procurement system. The React frontend runs on Vercel, the Express backend runs on Render, and MongoDB Atlas stores data. The backend uses JWT authentication and role-based access control. GitHub Actions validates the backend, frontend, and Docker setup, then triggers Render and Vercel deployment hooks after CI passes. A Jenkinsfile is also included to show how the same workflow can be implemented in Jenkins.
+```
+
+Detailed version:
+
+```text
+When code is pushed to main, GitHub Actions starts the CI pipeline. The server job installs backend dependencies, starts MongoDB, checks syntax, seeds data, starts the API, tests the health endpoint, logs in, extracts a JWT token, and calls an authenticated dashboard route. The client job installs frontend dependencies and builds the Vite app. The Docker job validates Docker Compose and builds both images. If all checks pass, the CD pipeline starts and calls deploy hooks stored in GitHub Secrets. Render redeploys the backend and Vercel redeploys the frontend. Jenkins is available as an optional alternative CI/CD path through the Jenkinsfile.
+```
+
+## 21. Glossary
+
+| Term | Meaning |
+| --- | --- |
+| MERN | MongoDB, Express, React, Node.js |
+| API | Interface used by frontend to communicate with backend |
+| REST | HTTP-based API design using GET, POST, PUT, DELETE |
+| JWT | Token used to prove a user is logged in |
+| RBAC | Role-Based Access Control |
+| CI | Continuous Integration, used to test code automatically |
+| CD | Continuous Deployment, used to deploy code automatically |
+| Deploy Hook | Secret URL that starts deployment on a hosting platform |
+| CORS | Browser security rule controlling cross-origin requests |
+| Docker | Tool for packaging applications into containers |
+| Jenkins | CI/CD automation server |
+| GitHub Actions | CI/CD automation built into GitHub |

@@ -1,29 +1,129 @@
-# System Design — Vendor & PO Manager (Enterprise SaaS v3.0)
+# System Design - Vendor and Purchase Order Manager
 
-## ER Diagram
+This document explains the system architecture, data model, request flow, security design, deployment layout, and CI/CD design for the Vendor and Purchase Order Manager project.
+
+## 1. High Level Architecture
+
+The application has three main runtime parts:
+
+```text
+React frontend on Vercel
+  sends API requests to
+Express backend on Render
+  reads and writes data in
+MongoDB Atlas
+```
+
+The frontend is responsible for user interaction, page routing, forms, charts, tables, and client-side state. The backend is responsible for authentication, authorization, business logic, API responses, scheduled jobs, emails, webhooks, and database access. MongoDB stores all persistent business data.
+
+## 1.1 Application Block Diagram
+
+This block diagram shows how the main parts of the project connect in production.
+
+```mermaid
+flowchart LR
+    U[User Browser] --> FE[Vercel Frontend<br/>React + Vite]
+    FE --> API[Render Backend<br/>Node.js + Express]
+    API --> DB[(MongoDB Atlas<br/>Production Database)]
+
+    API --> AUTH[JWT Auth<br/>RBAC Middleware]
+    API --> DOCS[Swagger Docs<br/>/api/docs]
+    API --> RT[Socket.io<br/>Real-Time Notifications]
+    API --> JOBS[Cron Jobs<br/>Notifications and Inventory Checks]
+    API --> EMAIL[SMTP Email Service]
+    API --> HOOKS[Webhook Endpoints]
+
+    DEV[Developer] --> GH[GitHub Repository]
+    GH --> CI[GitHub Actions CI<br/>Build and Test]
+    CI --> CD[GitHub Actions CD<br/>Deploy Hooks]
+    CD --> RENDER[Render Deploy Hook]
+    CD --> VERCEL[Vercel Deploy Hook]
+    RENDER --> API
+    VERCEL --> FE
+
+    JENKINS[Jenkins Optional Pipeline] --> RENDER
+    JENKINS --> VERCEL
+```
+
+## 1.2 Request Flow Diagram
+
+This flow shows what happens when a logged-in user opens a protected page and the frontend requests data.
+
+```mermaid
+flowchart TD
+    A[User opens protected page] --> B[React checks AuthContext]
+    B --> C{Token exists?}
+    C -->|No| D[Redirect to login]
+    C -->|Yes| E[Axios sends API request]
+    E --> F[Express receives request]
+    F --> G[Auth middleware verifies JWT]
+    G --> H{Token valid?}
+    H -->|No| I[Return 401 Unauthorized]
+    H -->|Yes| J[RBAC middleware checks role]
+    J --> K{Role allowed?}
+    K -->|No| L[Return 403 Forbidden]
+    K -->|Yes| M[Controller runs business logic]
+    M --> N[Mongoose queries MongoDB]
+    N --> O[Backend returns JSON response]
+    O --> P[React updates page state]
+```
+
+## 2. Main Components
+
+| Component | Responsibility |
+| --- | --- |
+| React frontend | User interface, routes, forms, dashboards, charts, authenticated page access |
+| Express backend | REST APIs, authentication, RBAC, controllers, validation, scheduled jobs |
+| MongoDB | Persistent storage for users, vendors, purchase orders, invoices, payments, and other records |
+| Socket.io | Real-time notifications between backend and frontend |
+| Swagger UI | API documentation at `/api/docs` |
+| Render | Hosts the Node.js backend |
+| Vercel | Hosts the React frontend |
+| MongoDB Atlas | Hosts the production database |
+| GitHub Actions | Primary CI/CD automation in the repository |
+| Jenkins | Optional enterprise CI/CD pipeline through `Jenkinsfile` |
+| Docker | Local container setup and deployability validation |
+
+## 3. Data Model Overview
+
+The system uses Mongoose models in the `server/models` directory.
+
+Important models include:
+
+| Model | Purpose |
+| --- | --- |
+| User | Stores application users, roles, hashed passwords, 2FA settings, and authentication provider data |
+| Vendor | Stores vendor profile, contact details, item prices, rating, performance score, and risk information |
+| PurchaseOrder | Stores purchase order number, vendor, line items, amount, status, approval status, and recurring settings |
+| Invoice | Stores invoice number, amount, paid amount, outstanding amount, due date, and payment status |
+| Payment | Stores payment records linked to invoices and vendors |
+| Contract | Stores vendor contract details, dates, value, status, and renewal reminder information |
+| Inventory | Stores stock item, SKU, current stock, reorder point, reorder quantity, and preferred vendor |
+| Budget | Stores department-level budget limits and usage |
+| Notification | Stores user notifications and read status |
+| AuditLog | Stores important user actions for accountability |
+| Session | Stores active session metadata such as IP address, user agent, and last activity |
+| Webhook | Stores webhook endpoint configuration and event subscriptions |
+| JournalEntry | Stores finance and accounting journal records |
+
+## 4. Entity Relationships
 
 ```mermaid
 erDiagram
-    Organization ||--o{ User : has
-    Organization ||--o{ Vendor : owns
-    Organization ||--o{ PurchaseOrder : owns
-    Organization ||--o{ Invoice : owns
-    Organization ||--o{ Budget : defines
-    Organization ||--o{ Notification : receives
-    Organization ||--o{ Contract : manages
-    Organization ||--o{ Inventory : tracks
-    Organization ||--o{ Webhook : configures
-
     User ||--o{ PurchaseOrder : creates
     User ||--o{ AuditLog : performs
     User ||--o{ Session : opens
-    Vendor ||--o{ PurchaseOrder : fulfills
-    Vendor ||--o{ Invoice : billed_by
-    Vendor ||--o{ Contract : bound_by
-    Vendor ||--o{ Inventory : "preferred for"
+
+    Vendor ||--o{ PurchaseOrder : receives
+    Vendor ||--o{ Invoice : issues
+    Vendor ||--o{ Contract : has
+    Vendor ||--o{ Inventory : supplies
+
     PurchaseOrder ||--o{ Invoice : generates
-    PurchaseOrder ||--o{ AuditLog : tracked_in
-    Invoice ||--o{ AuditLog : tracked_in
+    PurchaseOrder ||--o{ AuditLog : tracked_by
+
+    Invoice ||--o{ Payment : paid_by
+    Invoice ||--o{ AuditLog : tracked_by
 
     User {
         string name
@@ -31,19 +131,18 @@ erDiagram
         string password
         string role
         boolean enable2FA
-        ObjectId organizationId
     }
+
     Vendor {
         string name
         string contactPerson
-        string phone
         string email
+        string phone
         number rating
         number performanceScore
         string riskIndex
-        array itemPrices
-        ObjectId organizationId
     }
+
     PurchaseOrder {
         string poNumber
         ObjectId vendor
@@ -51,12 +150,9 @@ erDiagram
         number totalAmount
         string status
         string approvalStatus
-        array approvalHistory
-        string department
         boolean isRecurring
-        string recurringInterval
-        ObjectId organizationId
     }
+
     Invoice {
         string invoiceNumber
         number amount
@@ -64,322 +160,318 @@ erDiagram
         number outstandingAmount
         string paymentStatus
         date dueDate
-        ObjectId organizationId
     }
-    Budget {
-        string department
-        number monthlyLimit
-        ObjectId organizationId
-    }
-    AuditLog {
-        ObjectId user
-        string action
-        string entityType
-        ObjectId entityId
-        object metadata
-    }
-    Notification {
-        ObjectId user
-        string type
-        string message
-        boolean read
-    }
-    Contract {
+
+    Payment {
+        ObjectId invoice
         ObjectId vendor
-        string title
-        string contractNumber
-        date startDate
-        date endDate
-        number value
-        string status
-        boolean renewalReminder
-    }
-    Inventory {
-        string itemName
-        string sku
-        number currentStock
-        number reorderPoint
-        number reorderQty
-        boolean autoReorder
-        ObjectId preferredVendor
-    }
-    Session {
-        ObjectId user
-        string token
-        string ipAddress
-        string userAgent
-        boolean isActive
-        date lastActivity
-    }
-    Webhook {
-        string name
-        string url
-        array events
-        string secret
-        boolean isActive
-        number failCount
+        number amount
+        date paymentDate
+        string method
     }
 ```
 
-## Architecture Diagram
+## 5. Backend Architecture
 
-```mermaid
-graph TB
-    subgraph Client["Frontend (React + Vite) — 13 Pages"]
-        UI[React Components]
-        RC[Contexts<br/>Auth + Theme 3-Mode]
-        RR[React Router — 13 Routes]
-        WS[Socket.io Client]
-    end
+The backend starts from `server/server.js`.
 
-    subgraph Server["Backend (Node.js + Express)"]
-        MW[Middleware<br/>Auth / RBAC / Rate Limit]
-        RT[16 Route Files]
-        CT[15+ Controllers]
-        MD[12 Models<br/>Mongoose ODM]
-        UT[Utilities<br/>Audit / Cache / PDF / Email]
-        SK[Socket.io Server]
-        CR[3 Cron Jobs<br/>Notifications / Recurring PO / Auto-Reorder]
-    end
+Main backend responsibilities:
 
-    subgraph DB["Database"]
-        MG[(MongoDB Atlas)]
-    end
+1. Load environment variables.
+2. Connect to MongoDB.
+3. Create the Express application.
+4. Configure CORS.
+5. Configure Socket.io.
+6. Register middleware.
+7. Register API routes.
+8. Register Swagger documentation.
+9. Start scheduled cron jobs.
+10. Start the HTTP server.
 
-    subgraph External["External Services"]
-        SW[Swagger UI<br/>/api/docs]
-        EM[SMTP / Ethereal<br/>Email Service]
-        WH[Webhook<br/>Endpoints]
-    end
+Request processing flow:
 
-    UI --> RC --> RR
-    UI <--> WS
-    RR --> MW --> RT --> CT --> MD --> MG
-    CT --> UT
-    UT --> EM
-    CT --> WH
-    SK <--> WS
-    SK --> CT
-    CR --> CT
-    RT --> SW
+```text
+HTTP request
+Middleware
+Authentication check, if required
+Role check, if required
+Route handler
+Controller
+Mongoose model
+MongoDB
+JSON response
 ```
 
-## API Routes (16 Files)
+## 6. Frontend Architecture
 
-| Route File | Prefix | Endpoints | RBAC |
-|------------|--------|-----------|------|
-| `authRoutes.js` | `/api/auth` | login, register, me, 2FA | Public/Protected |
-| `userRoutes.js` | `/api/users` | CRUD, reset-password | Admin only |
-| `vendorRoutes.js` | `/api/vendors` | CRUD, performance, compare, suggest | Admin, Manager |
-| `poRoutes.js` | `/api/purchase-orders` | CRUD, approve/reject | Admin, Manager |
-| `invoiceRoutes.js` | `/api/invoices` | CRUD, record-payment | Admin, Accountant |
-| `dashboardRoutes.js` | `/api/dashboard` | stats | All authenticated |
-| `analyticsRoutes.js` | `/api/analytics` | aging, spend, growth, reliability, forecast, anomalies, compliance | Admin, Manager |
-| `budgetRoutes.js` | `/api/budgets` | CRUD, utilization | Admin, Manager |
-| `auditRoutes.js` | `/api/audit-logs` | list | Admin only |
-| `notificationRoutes.js` | `/api/notifications` | list, mark-read | All authenticated |
-| `importRoutes.js` | `/api/import` | CSV import | Admin, Manager |
-| `exportRoutes.js` | `/api/export` | Excel export (vendors/POs/invoices/audit) | Role-based |
-| `contractRoutes.js` | `/api/contracts` | CRUD with expiry tracking | Admin, Manager |
-| `inventoryRoutes.js` | `/api/inventory` | CRUD with stock status | Admin, Manager |
-| `webhookRoutes.js` | `/api/webhooks` | CRUD, event config | Admin only |
+The frontend starts from `client/src/main.jsx` and renders `App.jsx`.
 
-## Frontend Pages (13 Routes)
+Main frontend responsibilities:
 
-| Page | Route | Section |
-|------|-------|---------|
-| Dashboard | `/` | Main Menu |
-| Vendors | `/vendors` | Main Menu |
-| Purchase Orders | `/purchase-orders` | Main Menu |
-| Invoices | `/invoices` | Main Menu |
-| Kanban Board | `/kanban` | Main Menu |
-| Contracts | `/contracts` | Management |
-| Inventory | `/inventory` | Management |
-| Budgets | `/budgets` | Management |
-| Analytics | `/analytics` | Intelligence |
-| Forecasting | `/forecast` | Intelligence |
-| Vendor Compare | `/vendor-compare` | Intelligence |
-| User Management | `/users` | Administration |
-| Audit Logs | `/audit-logs` | Administration |
+1. Render login and protected application pages.
+2. Store authentication state through AuthContext.
+3. Store theme state through ThemeContext.
+4. Route users with React Router.
+5. Call backend APIs through the Axios API client.
+6. Show dashboards, tables, forms, charts, and notifications.
 
-## API Flow
+Frontend structure:
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant M as Middleware
-    participant R as Router
-    participant CT as Controller
-    participant DB as MongoDB
-    participant EM as Email Service
-    participant WH as Webhooks
-
-    C->>M: HTTP Request + JWT Token
-    M->>M: Verify JWT (auth.js)
-    M->>M: Check Role (rbac.js)
-    M->>M: Rate Limit Check
-    M->>R: Route to handler
-    R->>CT: Execute controller
-    CT->>DB: Query/Mutate
-    DB-->>CT: Result
-    CT->>CT: Audit Log (async)
-    CT-->>EM: Email (if applicable)
-    CT-->>WH: Fire webhook (if configured)
-    CT-->>C: JSON Response
+```text
+main.jsx
+AuthProvider
+ThemeProvider
+App.jsx
+React Router
+ProtectedRoute
+Layout
+Page components
 ```
 
-## Authentication Flow
+## 7. Authentication Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Client
-    participant S as Server
-    participant DB as MongoDB
-
-    U->>C: Enter credentials
-    C->>S: POST /api/auth/login
-    S->>DB: Find user by email
-    DB-->>S: User document
-    S->>S: Compare password (bcrypt)
-    alt 2FA Enabled
-        S-->>C: { requires2FA: true, tempToken }
-        C->>U: Show OTP input
-        U->>C: Enter OTP
-        C->>S: POST /api/auth/verify-2fa
-        S->>S: Verify TOTP (speakeasy)
-    end
-    S->>S: Generate JWT (id + role)
-    S-->>C: { token, user, role }
-    C->>C: Store in AuthContext + localStorage
-    C->>U: Redirect to Dashboard
+```text
+User enters email and password
+Frontend sends POST /api/auth/login
+Backend finds user by email
+Backend compares password with bcrypt
+Backend signs JWT token
+Frontend stores token
+Frontend sends token in Authorization header
+Backend verifies token on protected routes
+Backend allows or denies access
 ```
 
-## Data Lifecycle
+The token format sent by the frontend is:
 
-```mermaid
-graph LR
-    A[Create PO<br/>Draft] --> B[Submit PO<br/>Submitted]
-    B --> C{Approval}
-    C -->|Approved| D[PO Approved]
-    C -->|Rejected| E[PO Rejected]
-    E --> A
-    D --> F[Delivery]
-    F --> G{On Time?}
-    G -->|Yes| H[Delivered]
-    G -->|Late| I[Late Delivery<br/>Notification + Email]
-    I --> H
-    H --> J[Generate Invoice]
-    J --> K[Payment]
-    K --> L{Full Payment?}
-    L -->|Partial| M[Partial Payment]
-    M --> K
-    L -->|Full| N[Invoice Paid<br/>Webhook Fired]
-
-    style A fill:#6366f1,color:#fff
-    style D fill:#10b981,color:#fff
-    style E fill:#ef4444,color:#fff
-    style H fill:#10b981,color:#fff
-    style N fill:#10b981,color:#fff
-    style I fill:#f59e0b,color:#fff
+```text
+Authorization: Bearer <token>
 ```
 
-## Inventory Auto-Reorder Flow
+## 8. Authorization And RBAC
 
-```mermaid
-graph LR
-    CR[Cron Job<br/>Every 6 Hours] --> CHK{Stock <= Reorder Point?}
-    CHK -->|Yes| PV{Preferred Vendor?}
-    PV -->|Yes| DUP{Recent PO Exists?}
-    DUP -->|No| GEN[Auto-Generate PO]
-    DUP -->|Yes| SKIP[Skip]
-    PV -->|No| SKIP
-    CHK -->|No| OK[Stock OK]
-    GEN --> LOG[Audit Log Entry]
+RBAC means Role-Based Access Control. The backend uses middleware to decide whether a user can access a route.
 
-    style GEN fill:#6366f1,color:#fff
-    style SKIP fill:#94a3b8,color:#fff
-    style OK fill:#10b981,color:#fff
+| Area | Admin | Manager | Accountant | Viewer |
+| --- | --- | --- | --- | --- |
+| Dashboard | Full | Full | Full | View |
+| Vendors | Full | Full | Limited or no write access | View where allowed |
+| Purchase Orders | Full | Full | Limited or no write access | View where allowed |
+| Invoices | Full | Limited | Full | View where allowed |
+| Payments | Full | Limited | Full | View where allowed |
+| Budgets | Full | Full | Full | No access |
+| Analytics | Full | Full | Full | No access |
+| User Management | Full | No access | No access | No access |
+| Audit Logs | Full | No access | No access | No access |
+| Contracts | Full | Full | Limited or no write access | View where allowed |
+| Inventory | Full | Full | Limited or no write access | View where allowed |
+
+The frontend also hides pages that a role should not use, but backend middleware remains the real security layer.
+
+## 9. API Route Groups
+
+| Route Prefix | Purpose |
+| --- | --- |
+| `/api/auth` | Login, registration, current user |
+| `/api/users` | User management |
+| `/api/vendors` | Vendor management |
+| `/api/purchase-orders` | Purchase order workflow |
+| `/api/invoices` | Invoice workflow |
+| `/api/payments` | Payment records |
+| `/api/dashboard` | Dashboard summary data |
+| `/api/analytics` | Reports and analytics |
+| `/api/budgets` | Budget management |
+| `/api/audit-logs` | Audit log history |
+| `/api/notifications` | User notifications |
+| `/api/import` | CSV imports |
+| `/api/export` | Excel exports |
+| `/api/contracts` | Vendor contracts |
+| `/api/inventory` | Stock tracking |
+| `/api/webhooks` | Webhook configuration |
+| `/api/finance` | Finance reports |
+| `/api/journal-entries` | Journal entries |
+| `/api/accounting` | Accounting records |
+| `/api/search` | Search features |
+
+## 10. Business Workflow
+
+Typical procurement workflow:
+
+```text
+Vendor is created
+Purchase order is created
+Purchase order is submitted for approval
+Manager or admin approves it
+Delivery is tracked
+Invoice is created
+Payment is recorded
+Dashboard and reports update
+Audit log records important actions
+Notifications are generated when needed
 ```
 
-## RBAC Permissions Matrix
+## 11. Scheduled Jobs
 
-| Permission | Admin | Manager | Accountant | Viewer |
-|------------|:-----:|:-------:|:----------:|:------:|
-| Dashboard | ✅ | ✅ | ✅ | ✅ |
-| Vendors (Read/Write) | ✅/✅ | ✅/✅ | ❌/❌ | ✅/❌ |
-| Purchase Orders (Read/Write) | ✅/✅ | ✅/✅ | ❌/❌ | ✅/❌ |
-| Invoices (Read/Write) | ✅/✅ | ❌/❌ | ✅/✅ | ✅/❌ |
-| Analytics | ✅ | ✅ | ✅ | ❌ |
-| Budgets | ✅ | ✅ | ✅ | ❌ |
-| Audit Logs | ✅ | ❌ | ❌ | ❌ |
-| User Management | ✅ | ❌ | ❌ | ❌ |
-| Contracts | ✅ | ✅ | ❌ | ✅ |
-| Inventory | ✅ | ✅ | ❌ | ✅ |
-| Kanban Board | ✅ | ✅ | ❌ | ✅ |
-| Forecasting | ✅ | ✅ | ❌ | ❌ |
-| Vendor Compare | ✅ | ✅ | ❌ | ❌ |
+The backend uses scheduled jobs for recurring background work.
 
-## Cron Jobs
+| Job | Schedule | Purpose |
+| --- | --- | --- |
+| Notification generation | Periodic | Creates alerts for overdue invoices, late deliveries, and other events |
+| Inventory reorder checks | Periodic | Checks stock levels and can create reorder-related actions |
+| Recurring purchase order checks | Periodic | Supports recurring purchase order workflows |
 
-| Job | Schedule | Action |
-|-----|----------|--------|
-| Notification Generation | Every hour | Check overdue invoices, late deliveries, budget alerts |
-| Recurring PO Generation | Daily midnight | Clone delivered recurring POs based on interval |
-| Inventory Auto-Reorder | Every 6 hours | Generate POs for items below reorder point |
+## 12. Real-Time Notification Design
 
-## Scaling Strategy
+Socket.io is used for real-time communication.
 
-| Layer | Strategy |
-|-------|----------|
-| **Database** | MongoDB Atlas with replica sets, sharding by organizationId |
-| **Backend** | Horizontal scaling behind load balancer (PM2 cluster mode) |
-| **Frontend** | CDN deployment (Vercel/CloudFront) |
-| **Caching** | Node-Cache (single instance) → Redis (multi-instance) |
-| **WebSockets** | Socket.io with Redis adapter for multi-server |
-| **File Storage** | Local → S3/Cloudinary migration |
-| **Search** | MongoDB text indexes → Elasticsearch for advanced search |
-| **Email** | Ethereal (dev) → SendGrid/SES (production) |
-| **Webhooks** | In-process HTTP → Message queue (RabbitMQ/SQS) |
+```text
+Frontend opens Socket.io connection
+Backend keeps the socket connection active
+Backend creates notification event
+Backend emits event to connected client
+Frontend notification bell updates
+```
 
-## Security Strategy
+This avoids forcing the user to refresh the page to see new notifications.
 
-| Concern | Implementation |
-|---------|---------------|
-| **Authentication** | JWT with 30-day expiry, bcrypt password hashing |
-| **Authorization** | 4-role RBAC middleware (admin/manager/accountant/viewer) |
-| **Rate Limiting** | 200 req/15min API, 20 req/15min auth endpoints |
-| **Multi-Tenancy** | organizationId on all documents, query-level isolation |
-| **Input Validation** | Mongoose schema validation, required fields |
-| **File Upload** | PDF-only validation, Multer size limits |
-| **2FA** | TOTP via speakeasy (RFC 6238) |
-| **Headers** | X-Frame-Options: DENY, X-Content-Type-Options: nosniff |
-| **Sessions** | Tracked with IP/User-Agent, 30-day TTL auto-cleanup |
-| **Password Policy** | Minimum 6 characters, admin-initiated resets |
-| **Audit Trail** | Every CREATE/UPDATE/DELETE logged with user + metadata |
+## 13. Deployment Design
 
-## Performance Considerations
+Production deployment is split across three managed services:
 
-| Area | Optimization |
-|------|-------------|
-| **Database** | Indexes on poNumber, vendor, dueDate, status, organizationId, endDate, currentStock |
-| **Queries** | `.lean()` on read-heavy endpoints (list/search) |
-| **Caching** | Dashboard stats cached 60s via node-cache |
-| **Pagination** | All list endpoints paginated (default 10-20 per page) |
-| **Frontend** | Code splitting via React lazy loading |
-| **Assets** | Vite build with tree-shaking and minification |
-| **API** | Rate limiting prevents abuse, Socket.io for real-time |
-| **Export** | Streaming Excel generation via ExcelJS (no full-memory load) |
-| **Forecasting** | Linear regression runs on aggregated monthly data (O(n)) |
+| Service | Hosts |
+| --- | --- |
+| Vercel | React frontend |
+| Render | Express backend |
+| MongoDB Atlas | Database |
 
-## Feature Count (45 Total)
+Production request flow:
 
-| Phase | Features | Count |
-|-------|----------|:-----:|
-| **A** | Auth, CRUD (Vendors/POs/Invoices), Dashboard, Dark Mode, 2FA, Real-time, Pagination | 10 |
-| **B** | RBAC, Audit Logs, Budgets, Analytics (4 reports), Notifications, Recurring POs, CSV Import, Docker, CI/CD, Swagger | 10 |
-| **C1** | User Management, Email Notifications, Data Export, Advanced Search, Dashboard Widgets | 5 |
-| **C2** | Spend Forecasting, Anomaly Detection, Report Builder, Vendor Compare, KPI Scorecards | 5 |
-| **C3** | Session Management, IP Whitelisting, Encryption, Compliance Reports, Password Policies | 5 |
-| **C4** | Multi-Level Approvals, Contracts, Auto PO, Vendor Portal, Webhooks | 5 |
-| **C5** | Kanban Board, System Theme, i18n, PWA, Onboarding Tour | 5 |
+```text
+Browser
+Vercel frontend
+Render backend API
+MongoDB Atlas
+```
+
+Important environment variables:
+
+| Location | Variable | Purpose |
+| --- | --- | --- |
+| Vercel | `VITE_API_URL` | Tells frontend where the backend API is |
+| Render | `MONGODB_URI` | Connects backend to MongoDB |
+| Render | `JWT_SECRET` | Signs and verifies JWT tokens |
+| Render | `FRONTEND_URL` | Allows frontend origin for CORS |
+| Render | `NODE_ENV` | Runs backend in production mode |
+| Render | `ALLOW_PUBLIC_REGISTRATION` | Controls public signup |
+
+## 14. Docker Design
+
+Docker support is included for local container testing and deployment readiness.
+
+`docker-compose.yml` defines:
+
+| Service | Purpose |
+| --- | --- |
+| mongodb | Local MongoDB database |
+| server | Express backend container |
+| client | React build served by Nginx |
+
+The server waits for MongoDB to become healthy. The client waits for the server health check. Volumes persist MongoDB data and backend uploads.
+
+## 15. GitHub Actions CI Design
+
+The CI workflow is in `.github/workflows/ci.yml`.
+
+It runs on pushes to `main` and `develop`, and on pull requests targeting `main`.
+
+CI jobs:
+
+| Job | Purpose |
+| --- | --- |
+| Server Checks | Installs backend dependencies, checks syntax, seeds MongoDB, starts backend, tests health/login/dashboard APIs |
+| Client Build | Installs frontend dependencies and builds the Vite application |
+| Docker Build Test | Validates Docker Compose and builds backend/frontend Docker images |
+
+CI protects the project from deploying broken code.
+
+## 16. GitHub Actions CD Design
+
+The CD workflow is in `.github/workflows/cd.yml`.
+
+It runs after the CI workflow completes. It deploys only when CI succeeds on the `main` branch.
+
+CD uses these GitHub repository secrets:
+
+```text
+RENDER_DEPLOY_HOOK_URL
+VERCEL_DEPLOY_HOOK_URL
+```
+
+The CD workflow calls these URLs with `curl`. Render and Vercel receive the hook calls and redeploy the backend and frontend.
+
+## 17. Jenkins Design
+
+The optional Jenkins pipeline is in `Jenkinsfile`.
+
+Jenkins stages:
+
+1. Install backend dependencies.
+2. Check backend syntax.
+3. Install frontend dependencies.
+4. Build frontend.
+5. Trigger Render and Vercel deploy hooks when running on `main`.
+6. Archive frontend build output.
+
+Jenkins credentials needed:
+
+```text
+render-deploy-hook-url
+vercel-deploy-hook-url
+```
+
+If Jenkins becomes the main CI/CD system, GitHub Actions deployment should be disabled to avoid duplicate deployments.
+
+## 18. Scaling Strategy
+
+| Area | Current Design | Future Scale Option |
+| --- | --- | --- |
+| Database | MongoDB Atlas | Replica sets, indexes, sharding by organization |
+| Backend | Render Node service | Multiple instances behind load balancer |
+| Frontend | Vercel CDN | Global CDN remains suitable |
+| Cache | Node cache | Redis for multiple backend instances |
+| WebSockets | Single Socket.io server | Socket.io Redis adapter |
+| File storage | Local uploads | S3 or Cloudinary |
+| Search | MongoDB queries | Elasticsearch or Atlas Search |
+| Email | SMTP or test account | SendGrid, SES, or similar provider |
+| Webhooks | Direct HTTP calls | Queue-based delivery with retries |
+
+## 19. Security Strategy
+
+| Concern | Design |
+| --- | --- |
+| Authentication | JWT tokens and bcrypt password hashing |
+| Authorization | Backend role-based middleware |
+| Password storage | Hashed passwords, never plain text |
+| Rate limiting | Express rate limiter for API and auth routes |
+| CORS | Only allowed frontend origins can call the backend |
+| Environment secrets | Stored in platform secrets, not code |
+| Audit trail | Important create, update, and delete actions are logged |
+| Sessions | Session metadata can track IP, user agent, and activity |
+| File upload safety | Multer and route-level validation |
+| Production registration | Controlled through `ALLOW_PUBLIC_REGISTRATION` |
+
+## 20. Performance Considerations
+
+| Area | Approach |
+| --- | --- |
+| Database reads | Use indexes and pagination for list endpoints |
+| Dashboard | Cache expensive summary data when possible |
+| Frontend build | Vite builds optimized static assets |
+| API stability | Rate limiting reduces abuse |
+| Real-time updates | Socket.io avoids repeated polling |
+| Exports | ExcelJS supports report generation |
+| Forecasting | Aggregated data keeps calculations small |
+
+## 21. Final Architecture Summary
+
+The project follows a standard production MERN architecture. React handles the user experience, Express owns the business API, MongoDB stores persistent data, and DevOps automation validates and deploys the system. GitHub Actions is the current primary CI/CD path, while Jenkins is available as an alternative pipeline for learning and enterprise-style demonstrations.
