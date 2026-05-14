@@ -110,13 +110,15 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── Serve React build in production ──
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+const hasClientBuild = fs.existsSync(path.join(clientDistPath, 'index.html'));
+
+if (process.env.NODE_ENV === 'production' && hasClientBuild) {
+    app.use(express.static(clientDistPath));
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+        res.sendFile(path.join(clientDistPath, 'index.html'));
     });
 } else {
-    // Error middleware (dev only — production serves index.html for all non-API routes)
     app.use(notFound);
     app.use(errorHandler);
 }
