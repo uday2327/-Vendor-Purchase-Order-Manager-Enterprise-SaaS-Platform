@@ -47,7 +47,7 @@ This repository includes a root `Jenkinsfile` for Jenkins CI/CD.
 
 To use Jenkins:
 
-1. Install Jenkins with Node.js 20+ and Git available on the Jenkins agent.
+1. Install Jenkins with Git, Node.js 20.19+, npm, Docker, and Docker Compose available on the Jenkins agent.
 2. Create a Jenkins Pipeline job.
 3. Point the job to this GitHub repository.
 4. Set the pipeline script path to `Jenkinsfile`.
@@ -57,4 +57,6 @@ To use Jenkins:
 6. Run the job manually once.
 7. Add a GitHub webhook to Jenkins if you want the job to run automatically on push.
 
-The Jenkins pipeline installs backend dependencies, checks server syntax, installs frontend dependencies, builds the frontend, archives the built frontend files, and triggers Render/Vercel deploy hooks when the branch is `main`.
+The Jenkins pipeline installs backend/frontend dependencies in parallel, checks server syntax, builds the frontend, smoke-tests `/api/health`, validates Docker Compose, builds Docker images, archives build output, and triggers Render/Vercel deploy hooks when the branch is `main`.
+
+If the Jenkins agent does not have Docker, set `SKIP_DOCKER=true` in the Jenkins build environment. Full setup details are in `JENKINS_SETUP.md`.

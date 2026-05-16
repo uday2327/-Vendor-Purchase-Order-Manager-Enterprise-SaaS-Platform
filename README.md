@@ -62,6 +62,7 @@ vendor-system/
     cd.yml                 GitHub Actions CD pipeline
 
   Jenkinsfile              Optional Jenkins CI/CD pipeline
+  JENKINS_SETUP.md         Jenkins setup guide
   docker-compose.yml       Local container setup
   render.yaml              Render backend deployment configuration
   SYSTEM_DESIGN.md         System design notes and diagrams
@@ -478,12 +479,13 @@ Jenkins is optional. GitHub Actions can already run CI/CD for this project. Jenk
 
 The Jenkins pipeline performs these stages:
 
-1. Install backend dependencies.
-2. Check backend syntax.
-3. Install frontend dependencies.
-4. Build frontend.
-5. On the `main` branch, trigger Render and Vercel deploy hooks.
-6. Archive the frontend build output.
+1. Verify Node.js, npm, and Git on the Jenkins agent.
+2. Install backend and frontend dependencies in parallel.
+3. Check backend syntax and build the frontend in parallel.
+4. Start the backend with `SKIP_DB=true` and test `/api/health`.
+5. Validate Docker Compose and build the backend/frontend Docker images.
+6. On the `main` branch, trigger Render and Vercel deploy hooks.
+7. Archive the frontend build output and backend smoke-test log.
 
 Jenkins needs these secret text credentials:
 
@@ -494,6 +496,8 @@ vercel-deploy-hook-url
 
 These credentials are Jenkins-side secrets. They should not be committed to the repository.
 
+The Jenkins agent should have Git, Node.js 20.19 or newer, npm, Docker, and Docker Compose installed. If Docker is not available on the agent, set `SKIP_DOCKER=true` in the Jenkins build environment to skip the Docker validation stage.
+
 To use Jenkins as the main CI/CD system:
 
 1. Create a Jenkins Pipeline job.
@@ -502,6 +506,8 @@ To use Jenkins as the main CI/CD system:
 4. Add the two Jenkins credentials listed above.
 5. Add a GitHub webhook pointing to Jenkins.
 6. Disable GitHub Actions deployment if you do not want duplicate deployments.
+
+More detailed setup steps are available in `JENKINS_SETUP.md`.
 
 Recommended practice is to choose one primary deployment system. Use GitHub Actions or Jenkins as the main CD system, not both at the same time.
 

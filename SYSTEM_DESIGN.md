@@ -415,12 +415,13 @@ The optional Jenkins pipeline is in `Jenkinsfile`.
 
 Jenkins stages:
 
-1. Install backend dependencies.
-2. Check backend syntax.
-3. Install frontend dependencies.
-4. Build frontend.
-5. Trigger Render and Vercel deploy hooks when running on `main`.
-6. Archive frontend build output.
+1. Verify Node.js, npm, and Git on the Jenkins agent.
+2. Install backend and frontend dependencies in parallel.
+3. Check backend syntax and build the frontend in parallel.
+4. Start the backend with `SKIP_DB=true` and test `/api/health`.
+5. Validate Docker Compose and build backend/frontend Docker images.
+6. Trigger Render and Vercel deploy hooks when running on `main`.
+7. Archive frontend build output and the backend smoke-test log.
 
 Jenkins credentials needed:
 
@@ -428,6 +429,8 @@ Jenkins credentials needed:
 render-deploy-hook-url
 vercel-deploy-hook-url
 ```
+
+The Jenkins agent should use Node.js 20.19 or newer because the frontend build requires that version. Docker validation can be skipped with `SKIP_DOCKER=true` when the Jenkins agent does not provide Docker.
 
 If Jenkins becomes the main CI/CD system, GitHub Actions deployment should be disabled to avoid duplicate deployments.
 
