@@ -13,6 +13,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 const { generateNotifications } = require('./controllers/notificationController');
 const { checkReorderPoints } = require('./controllers/inventoryController');
+const bootstrapAdmin = require('./utils/bootstrapAdmin');
 
 // Load env vars (check root, then server dir)
 const fs = require('fs');
@@ -24,7 +25,17 @@ if (fs.existsSync(rootEnv)) {
 }
 
 // Connect to MongoDB
-connectDB();
+connectDB()
+    .then((conn) => {
+        if (conn) {
+            return bootstrapAdmin();
+        }
+        return null;
+    })
+    .catch((error) => {
+        console.error(`Startup error: ${error.message}`);
+        process.exit(1);
+    });
 
 const appVersion = require('./package.json').version;
 const dbStateLabels = {
@@ -41,7 +52,7 @@ const defaultAllowedOrigins = [
 ];
 const configuredOrigins = (process.env.FRONTEND_URL || '')
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
 const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
 

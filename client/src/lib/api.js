@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const apiBaseUrl = (configuredApiUrl || '/api').replace(/\/+$/, '');
+
+const deploymentConfigMessage =
+    'Frontend is not connected to the backend API. Set VITE_API_URL in Vercel to your Render backend URL ending with /api, then redeploy the frontend.';
 
 const api = axios.create({
     baseURL: apiBaseUrl,
@@ -25,6 +29,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        const contentType = error.response?.headers?.['content-type'] || '';
+        if (contentType.includes('text/html')) {
+            error.userMessage = deploymentConfigMessage;
+        } else if (!error.response && error.message === 'Network Error') {
+            error.userMessage =
+                'Cannot reach the backend API. Check VITE_API_URL in Vercel and FRONTEND_URL in Render.';
+        }
+
         if (error.response && error.response.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');

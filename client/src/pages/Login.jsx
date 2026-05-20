@@ -28,7 +28,7 @@ const Login = () => {
             toast.success('Login successful!');
             navigate('/');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Login failed');
+            toast.error(error.userMessage || error.response?.data?.message || error.message || 'Login failed');
         } finally {
             setLoading(false);
         }
@@ -43,7 +43,7 @@ const Login = () => {
             toast.success('Google login successful!');
             navigate('/');
         } catch (error) {
-            const msg = error.response?.data?.message || 'Google login failed';
+            const msg = error.userMessage || error.response?.data?.message || error.message || 'Google login failed';
             toast.error(msg);
         }
     };

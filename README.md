@@ -333,9 +333,14 @@ SMTP_PASS
 SMTP_FROM
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
+ADMIN_NAME
+ADMIN_EMAIL
+ADMIN_PASSWORD
 ```
 
 `FRONTEND_URL` is important because the backend uses it for CORS and frontend-facing links. If it is wrong, the browser may block frontend requests with a CORS error.
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on a new production database if you want the backend to create the first admin account automatically. This is safer than running `seed.js` on production because `seed.js` clears existing data.
 
 ### Vercel Frontend
 
@@ -568,6 +573,10 @@ https://your-render-service.onrender.com/api
 ```
 
 Also check `FRONTEND_URL` in Render. It should be the Vercel frontend URL.
+
+### Login Fails With Demo Credentials
+
+The deployed database does not contain `admin@vendor.com / admin123` unless you seed it or configure the admin bootstrap variables. In Render, add `ADMIN_EMAIL` and `ADMIN_PASSWORD`, redeploy the backend, then log in with those values.
 
 ### CORS Error
 
