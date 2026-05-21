@@ -14,7 +14,7 @@ services:
       - key: ALLOW_PUBLIC_REGISTRATION
         value: "false"
       - key: FRONTEND_URL
-        sync: false
+        value: https://vendor-purchase-order-manager-enter.vercel.app
       - key: ADMIN_NAME
         value: Admin
       - key: ADMIN_EMAIL
